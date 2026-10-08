@@ -6,8 +6,8 @@ Create two independent web apps for DayKindle: a public, SEO-focused marketing s
 
 ## Architecture
 
-- `apps/marketing`: TanStack Start, React, TypeScript, Tailwind CSS, shadcn/ui, and Motion for React. Use server rendering for the public route and provide page metadata, canonical URL, Open Graph metadata, `robots.txt`, and `sitemap.xml`.
-- `apps/dashboard`: Next.js App Router, React, TypeScript, Tailwind CSS, and shadcn/ui. Keep the app separately installable and deployable.
+- `marketing/`: TanStack Start, React, TypeScript, Tailwind CSS, shadcn/ui, and Motion for React. Use server rendering for the public route and provide page metadata, canonical URL, Open Graph metadata, `robots.txt`, and `sitemap.xml`.
+- `dashboard/`: Next.js App Router, React, TypeScript, Tailwind CSS, and shadcn/ui. Keep the app separately installable and deployable.
 - Both apps use the DayKindle Satoshi typography, warm light palette, and squircle geometry from the mobile product. Each app owns its package manifest, lockfile, and environment configuration. No root workspace or Expo package changes are required.
 
 ## Marketing experience

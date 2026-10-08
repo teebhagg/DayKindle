@@ -18,10 +18,21 @@ export const posthog = projectToken && host
   ? new PostHog(projectToken, {
       host,
       disableGeoip: true,
-      before_send: (event) => event && ({
-        ...event,
-        properties: { ...event.properties, app_environment: __DEV__ ? 'development' : 'production' },
-      }),
+      captureAppLifecycleEvents: true,
+      enableSessionReplay: false,
+      before_send: (event) => {
+        if (!event) return event;
+        const properties = { ...event.properties };
+        Reflect.deleteProperty(properties, 'url');
+        return {
+          ...event,
+          properties: {
+            ...properties,
+            app_environment: __DEV__ ? 'development' : 'production',
+            app_surface: 'mobile',
+          },
+        };
+      },
       logs: {
         serviceName: 'accountability-tracker-mobile',
       },

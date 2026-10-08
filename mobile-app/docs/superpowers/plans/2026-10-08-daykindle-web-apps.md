@@ -4,13 +4,13 @@
 
 **Goal:** Create a public TanStack Start marketing site and a separate internal Next.js analytics dashboard for DayKindle.
 
-**Architecture:** Independent app roots under `apps/marketing` and `apps/dashboard`, each with its own dependencies and lockfile. Share visual conventions by copying only the needed font assets and using matching tokens; do not convert the Expo root into a package workspace. Marketing renders publicly with TanStack Start and uses Motion for React. Dashboard uses Next.js App Router, Supabase cookie auth plus an email allowlist, and server-side PostHog Query API calls.
+**Architecture:** Independent app roots under `marketing/` and `dashboard/`, each with its own dependencies and lockfile. Share visual conventions by copying only the needed font assets and using matching tokens; do not convert the Expo root into a package workspace. Marketing renders publicly with TanStack Start and uses Motion for React. Dashboard uses Next.js App Router, Supabase cookie auth plus an email allowlist, and server-side PostHog Query API calls.
 
 **Tech:** TanStack Start, React, TypeScript, Tailwind CSS, shadcn/ui, Motion for React; Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui; Supabase SSR; PostHog Query API; npm.
 
 ## Task 1: Scaffold independent apps
 
-- Create `apps/marketing` with the official TanStack CLI and `apps/dashboard` with the Next.js App Router defaults.
+- Create `marketing/` with the official TanStack CLI and `dashboard/` with the Next.js App Router defaults.
 - Configure independent npm scripts, TypeScript, Tailwind, and shadcn/ui in each app.
 - Keep app-specific configuration in each app root and add sanitized `.env.example` files.
 - Confirm generated files do not overwrite or relocate any existing mobile files.
