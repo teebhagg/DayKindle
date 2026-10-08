@@ -1,56 +1,39 @@
-# Welcome to your Expo app 👋
+# DayKindle
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Routines woven into everyday life.
 
-## Get started
+Mobile application built with Expo, React Native, and TypeScript.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run locally
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use the Expo CLI prompts to launch the app on a simulator, device, or web browser.
 
-### Other setup steps
+Native backdrop blur requires a development build; Expo Go is not supported. After installing dependencies, generate the native projects and run a development build:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx expo prebuild
+npx expo run:ios
+# or
+npx expo run:android
+```
 
-## Learn more
+The onboarding header and sticky bottom actions use progressive blur so scrolling content passes beneath them on iOS and Android. Web uses an opaque fallback because `expo-backdrop` does not support web.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Current flow
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The intro is followed immediately by account choice. Google, Apple on iOS, and Guest continue to three short setup screens: life areas with one optional matching goal, visual style, and an optional weekday or weekend routine. Skip opens a clean Guest workspace; a previous local session is kept in a recoverable archive.
 
-## Join the community
+## Supabase setup
 
-Join our community of developers creating universal apps.
+1. Copy `.env.example` to `.env.local` and add the Supabase project URL and publishable key. Do not put a service-role key in the app.
+2. Link this folder to the Supabase project and apply the migration with `npx supabase link` and `npx supabase db push`.
+3. Enable Google and Apple in Supabase Auth. Add `dayweave://auth/callback` to the project's redirect allow list for development builds. Keep `daymark://auth/callback` during the transition for already-installed builds. Add the Supabase Auth callback URL to the Google provider configuration. Configure Apple with the iOS bundle ID `com.daykindle.app`.
+4. Deploy the `delete-account` Edge Function. It verifies the caller and uses the server-side `SUPABASE_SERVICE_ROLE_KEY`; never add that secret to Expo environment variables.
+5. Add the required Apple and Google provider credentials in Supabase Dashboard before testing live sign-in. Web sign-in is not enabled.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Signed-in users are asked once whether their planner may sync. Guest data remains local unless the user signs in and accepts. Sync stores the full planner snapshot, including check-ins and reflections; revision conflicts preserve both copies and offer device and account recovery from Profile.
