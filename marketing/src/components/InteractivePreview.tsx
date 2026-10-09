@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowRight, Check, MoveRight, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -23,6 +23,7 @@ export default function InteractivePreview() {
   const [completed, setCompleted] = useState<number[]>([0])
   const [movedToTomorrow, setMovedToTomorrow] = useState(false)
   const reduceMotion = useReducedMotion()
+  const stageNumber = String(stages.findIndex((item) => item.id === stage) + 1).padStart(2, '0')
 
   function toggleAction(index: number) {
     setCompleted((current) =>
@@ -55,7 +56,19 @@ export default function InteractivePreview() {
               <p className="preview-eyebrow">SAMPLE DAY</p>
               <h2>{stage === 'plan' ? 'Plan a day' : stage === 'adjust' ? 'Adjust the plan' : 'Today'}</h2>
             </div>
-            <span className="preview-day-mark" aria-hidden="true">01</span>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={stage}
+                className="preview-day-mark"
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 520, damping: 38 }}
+                aria-hidden="true"
+              >
+                {stageNumber}
+              </motion.span>
+            </AnimatePresence>
           </div>
 
           <div className="preview-tabs" role="tablist" aria-label="Preview stages">
@@ -63,18 +76,26 @@ export default function InteractivePreview() {
               <Button
                 key={item.id}
                 type="button"
-                variant={stage === item.id ? 'default' : 'ghost'}
-                className="preview-tab"
+                variant="ghost"
+                className={`preview-tab${stage === item.id ? ' is-active' : ''}`}
                 role="tab"
-                  aria-selected={stage === item.id}
-                  aria-controls="preview-panel"
-                  id={'preview-tab-' + item.id}
+                aria-selected={stage === item.id}
+                aria-controls="preview-panel"
+                id={'preview-tab-' + item.id}
                 onClick={() => {
                   setHasInteracted(true)
                   setStage(item.id)
                 }}
               >
-                {item.label}
+                {stage === item.id && (
+                  <motion.span
+                    layoutId="preview-tab-indicator"
+                    className="preview-tab-indicator"
+                    transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 520, damping: 38 }}
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="preview-tab-label">{item.label}</span>
               </Button>
             ))}
           </div>

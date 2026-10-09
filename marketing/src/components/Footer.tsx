@@ -8,10 +8,8 @@ export default function SiteFooter() {
           <img src="/daykindle-logo.png" alt="" width="30" height="30" />
           <span>DayKindle</span>
         </Link>
-        <p>A daily planner by Joshua Ansah.</p>
         <nav aria-label="Footer navigation">
           <Link to="/about">About DayKindle</Link>
-          <Link to="/author">About Joshua</Link>
           <a href="/#guest-workspace">Guest workspace</a>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>

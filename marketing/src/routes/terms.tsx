@@ -1,20 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import LegalPage, { LegalSection } from '@/components/LegalPage'
-import { siteUrl } from '@/lib/site'
+import { createPageSeo } from '@/lib/seo'
 
 const contactEmail = 'mr.joshua.ansah@gmail.com'
 
 export const Route = createFileRoute('/terms')({
   head: () => ({
-    meta: [
-      { title: 'Terms and Conditions — DayKindle' },
-      {
-        name: 'description',
-        content: 'The terms for using the DayKindle app and website.',
-      },
-      { name: 'robots', content: 'noindex, nofollow' },
-    ],
-    links: siteUrl ? [{ rel: 'canonical', href: siteUrl + '/terms' }] : [],
+    ...createPageSeo({
+      title: 'Terms and conditions | DayKindle',
+      description:
+        "Read the terms for DayKindle's mobile app, website, optional account sync, user content, and service availability.",
+      pathname: '/terms',
+      noIndex: true,
+    }),
   }),
   component: TermsPage,
 })

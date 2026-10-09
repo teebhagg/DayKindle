@@ -1,28 +1,31 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { ArrowRight, MoveRight } from 'lucide-react'
-import { siteUrl } from '@/lib/site'
+import { createPageSeo } from '@/lib/seo'
 
 export const Route = createFileRoute('/about')({
   head: () => ({
-    meta: [
-      { title: 'Why DayKindle exists — a planner for real days' },
-      {
-        name: 'description',
-        content:
-          'DayKindle began with a personal hope: to live with more intention and deepen my relationship with God. Here’s the thinking behind the planner.',
-      },
-      { property: 'og:title', content: 'Why DayKindle exists' },
-      {
-        property: 'og:description',
-        content: 'A personal reason for making a planner that leaves room for real life.',
-      },
-    ],
-    links: siteUrl ? [{ rel: 'canonical', href: siteUrl + '/about' }] : [],
+    ...createPageSeo({
+      title: 'About DayKindle',
+      description:
+        "DayKindle is an open-source daily planner. Read why Joshua Ansah started it, and how personal routines, priorities, and faith shaped the project.",
+      pathname: '/about',
+    }),
   }),
   component: AboutPage,
 })
 
 function AboutPage() {
+  useEffect(() => {
+    if (window.location.hash !== '#about-joshua') return
+
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${window.location.search}`,
+    )
+  }, [])
+
   return (
     <main id="main" className="about-page section-width">
       <div className="about-intro">
@@ -45,12 +48,32 @@ function AboutPage() {
         <div><span>02</span><p><strong>Notice what happened</strong>Record the day as it was, not as you hoped it would be.</p></div>
         <div><span>03</span><p><strong>Begin again</strong>Move an action or change the plan when life shifts.</p></div>
       </div>
+      <section className="author-work" id="about" aria-labelledby="author-work-title">
+        <div className="author-intro">
+          <p className="eyebrow"><span className="eyebrow-dot" /> About the author</p>
+          <h2 id="author-work-title">Joshua Ansah</h2>
+          <p className="author-deck">Software engineer and creator of DayKindle.</p>
+        </div>
+        <div className="author-work-copy">
+          <p>
+            I started DayKindle with my own routines and priorities in mind. I wanted a planner that helped me make a plan, notice what actually happened, and adjust when the day changed. I'm sharing it in the open so others can use it and help shape it.
+          </p>
+          <a
+            className="author-portfolio-link"
+            href="https://joshua-ansah.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            More About Me <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </div>
+      </section>
       <div className="about-actions">
-        <a className="about-primary-link" href="/author">
-          Meet Joshua <ArrowRight size={16} aria-hidden="true" />
+        <a className="about-primary-link" href="/#sample-day">
+          Try the sample day <ArrowRight size={16} aria-hidden="true" />
         </a>
-        <a className="guest-link" href="/#how-it-works">
-          See how the planner works <MoveRight size={16} aria-hidden="true" />
+        <a className="guest-link" href="/#app-screens">
+          See the app <MoveRight size={16} aria-hidden="true" />
         </a>
       </div>
     </main>

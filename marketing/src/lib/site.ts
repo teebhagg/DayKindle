@@ -1,5 +1,15 @@
-const configuredSiteUrl = import.meta.env.VITE_SITE_URL?.trim()
+function normalizeSiteUrl(value: string | undefined) {
+  if (!value?.trim()) return ''
 
-export const siteUrl = configuredSiteUrl
-  ? configuredSiteUrl.replace(/\/$/, '')
-  : ''
+  try {
+    const url = new URL(value.trim())
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return ''
+    if (url.username || url.password) return ''
+    return url.origin
+  } catch {
+    return ''
+  }
+}
+
+export const siteUrl = normalizeSiteUrl(import.meta.env.VITE_SITE_URL)
+export const siteLogoUrl = siteUrl ? new URL('/daykindle-logo.png', siteUrl).href : ''

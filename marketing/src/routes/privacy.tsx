@@ -1,20 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import LegalPage, { LegalSection } from '@/components/LegalPage'
-import { siteUrl } from '@/lib/site'
+import { createPageSeo } from '@/lib/seo'
 
 const contactEmail = 'mr.joshua.ansah@gmail.com'
 
 export const Route = createFileRoute('/privacy')({
   head: () => ({
-    meta: [
-      { title: 'Privacy Policy — DayKindle' },
-      {
-        name: 'description',
-        content: 'How DayKindle handles planner, account, analytics, and website information.',
-      },
-      { name: 'robots', content: 'noindex, nofollow' },
-    ],
-    links: siteUrl ? [{ rel: 'canonical', href: siteUrl + '/privacy' }] : [],
+    ...createPageSeo({
+      title: 'Privacy policy | DayKindle',
+      description:
+        'Read how DayKindle handles local planner data, optional account sync, analytics, and support requests.',
+      pathname: '/privacy',
+      noIndex: true,
+    }),
   }),
   component: PrivacyPage,
 })

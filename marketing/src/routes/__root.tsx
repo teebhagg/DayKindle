@@ -3,24 +3,32 @@ import { MotionConfig } from 'motion/react'
 import MarketingAnalytics from '@/components/MarketingAnalytics'
 import SiteFooter from '@/components/Footer'
 import SiteHeader from '@/components/Header'
+import { createPageSeo } from '@/lib/seo'
 import appCss from '@/styles.css?url'
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      {
-        title: 'DayKindle — a daily planner with room to adjust',
-      },
-      {
-        name: 'description',
-        content:
-          'Plan your goals, routines, and daily actions. Review the day and revise your list when plans change.',
-      },
-    ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-  }),
+  head: () => {
+    const seo = createPageSeo({
+      title: 'DayKindle | Make room for change',
+      description:
+        'Plan goals, routines, and daily actions in one place. DayKindle helps you choose what matters today and adjust when life changes.',
+    })
+
+    return {
+      ...seo,
+      meta: [
+        { charSet: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        ...seo.meta,
+      ],
+      links: [
+        { rel: 'icon', type: 'image/png', href: '/daykindle-icon.png' },
+        { rel: 'apple-touch-icon', type: 'image/png', href: '/daykindle-icon.png' },
+        { rel: 'stylesheet', href: appCss },
+        ...seo.links,
+      ],
+    }
+  },
   shellComponent: RootDocument,
 })
 

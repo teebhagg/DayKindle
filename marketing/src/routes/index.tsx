@@ -4,28 +4,29 @@ import { ArrowRight, CalendarDays, Check, MoveRight } from 'lucide-react'
 import InteractivePreview from '@/components/InteractivePreview'
 import ScrollReveal from '@/components/ScrollReveal'
 import { siteUrl } from '@/lib/site'
+import { createPageSeo } from '@/lib/seo'
 
 export const Route = createFileRoute('/')({
   head: () => ({
-    meta: [
-      { title: 'DayKindle — a daily planner that can change' },
-      {
-        name: 'description',
-        content:
-          'Plan goals, routines, and daily actions with DayKindle. Move an action when the day does not go to plan.',
-      },
-      { property: 'og:title', content: 'DayKindle — a daily planner that can change' },
-      {
-        property: 'og:description',
-        content:
-          'A mobile planner for goals, routines, and daily actions. Move an item or leave it for tomorrow when plans change.',
-      },
-      { property: 'og:type', content: 'website' },
-      ...(siteUrl ? [{ property: 'og:url', content: siteUrl + '/' }] : []),
-      ...(siteUrl ? [{ property: 'og:image', content: siteUrl + '/daykindle-logo.png' }] : []),
-      { name: 'twitter:card', content: 'summary_large_image' },
-    ],
-    links: siteUrl ? [{ rel: 'canonical', href: siteUrl + '/' }] : [],
+    ...createPageSeo({
+      title: 'DayKindle | A daily planner with room to adjust',
+      description:
+        'Plan goals, routines, and daily actions in one place. DayKindle helps you choose what matters today and adjust when life changes.',
+      pathname: '/',
+    }),
+    scripts: siteUrl
+      ? [
+          {
+            type: 'application/ld+json',
+            children: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'DayKindle',
+              url: `${siteUrl}/`,
+            }),
+          },
+        ]
+      : [],
   }),
   component: HomePage,
 })
@@ -113,14 +114,10 @@ function HomePage() {
             <span className="hero-brand-mark" aria-hidden="true">
               <img src="/daykindle-logo.png" alt="" width="48" height="48" />
             </span>
-            <p className="eyebrow"><span className="eyebrow-dot" /> A daily planner for real life</p>
+            <p className="eyebrow hero-slogan"><span className="eyebrow-dot" /> Kindle momentum, one day at a time.</p>
             <h1>Make room for <em>change.</em></h1>
-            <p className="hero-description">
+            <p className="hero-description handrawn-copy">
               Keep goals, routines, and daily actions together. Make a plan for today, then move things around when the day changes.
-            </p>
-            <p className="hero-note">
-              <Check size={16} aria-hidden="true" />
-              <span>Open source. Guest mode is available in the mobile app.</span>
             </p>
             <div className="hero-actions">
               <a className="hero-button" href="#app-screens">Explore the app <ArrowRight size={17} aria-hidden="true" /></a>
@@ -150,7 +147,7 @@ function HomePage() {
           <div className="screens-heading section-heading-centered">
             <p className="eyebrow"><span className="eyebrow-dot" /> Experience DayKindle</p>
             <h2 id="screens-heading">A day, from plan to review.</h2>
-            <p>Set up a routine, work through the day, and look back at what you recorded.</p>
+            <p className="handrawn-copy">Set up a routine, work through the day, and look back at what you recorded.</p>
           </div>
         </ScrollReveal>
         <div className="feature-list">
@@ -170,7 +167,7 @@ function HomePage() {
               <div className="feature-copy">
                 <p className="eyebrow"><span className="eyebrow-dot" /> Today</p>
                 <h3>Keep today in view.</h3>
-                <p>See your routine, choose what to do, and mark what happened.</p>
+                <p className="handrawn-copy">See your routine, choose what to do, and mark what happened.</p>
               </div>
             </article>
           </ScrollReveal>
@@ -190,7 +187,7 @@ function HomePage() {
               <div className="feature-copy">
                 <p className="eyebrow"><span className="eyebrow-dot" /> Templates</p>
                 <h3>Start with a routine that fits.</h3>
-                <p>Choose a starting point, then edit the steps to fit your week.</p>
+                <p className="handrawn-copy">Choose a starting point, then edit the steps to fit your week.</p>
               </div>
             </article>
           </ScrollReveal>
@@ -210,7 +207,7 @@ function HomePage() {
               <div className="feature-copy">
                 <p className="eyebrow"><span className="eyebrow-dot" /> Progress</p>
                 <h3>See how the days add up.</h3>
-                <p>Review the actions you recorded over the time range you choose.</p>
+                <p className="handrawn-copy">Review the actions you recorded over the time range you choose.</p>
               </div>
             </article>
           </ScrollReveal>
@@ -222,7 +219,7 @@ function HomePage() {
           <div className="section-heading section-heading-centered">
             <p className="eyebrow"><span className="eyebrow-dot" /> Start small</p>
             <h2>A plan you can rework.</h2>
-            <p>Pick what matters today. Change the list when you need to.</p>
+            <p className="handrawn-copy">Pick what matters today. Change the list when you need to.</p>
           </div>
         </ScrollReveal>
         <ScrollReveal>
@@ -230,19 +227,19 @@ function HomePage() {
             <li>
               <span className="day-flow-number">01</span>
               <span className="day-flow-icon"><CalendarDays size={19} strokeWidth={1.8} aria-hidden="true" /></span>
-              <span className="day-flow-copy"><strong>Choose a few actions</strong><small>Pick goals, routines, or tasks for the day.</small></span>
+              <span className="day-flow-copy"><strong>Choose a few actions</strong><small className="handrawn-copy">Pick goals, routines, or tasks for the day.</small></span>
               <ArrowRight className="day-flow-arrow" size={16} aria-hidden="true" />
             </li>
             <li>
               <span className="day-flow-number">02</span>
               <span className="day-flow-icon"><Check size={19} strokeWidth={1.8} aria-hidden="true" /></span>
-              <span className="day-flow-copy"><strong>Mark what happened</strong><small>Complete an action, skip it, or leave it open.</small></span>
+              <span className="day-flow-copy"><strong>Mark what happened</strong><small className="handrawn-copy">Complete an action, skip it, or leave it open.</small></span>
               <ArrowRight className="day-flow-arrow" size={16} aria-hidden="true" />
             </li>
             <li>
               <span className="day-flow-number">03</span>
               <span className="day-flow-icon"><MoveRight size={19} strokeWidth={1.8} aria-hidden="true" /></span>
-              <span className="day-flow-copy"><strong>Adjust when you need to</strong><small>Move an action when the timing no longer fits.</small></span>
+              <span className="day-flow-copy"><strong>Adjust when you need to</strong><small className="handrawn-copy">Move an action when the timing no longer fits.</small></span>
               <ArrowRight className="day-flow-arrow" size={16} aria-hidden="true" />
             </li>
           </ol>
@@ -254,7 +251,7 @@ function HomePage() {
           <div className="sample-copy">
             <p className="eyebrow"><span className="eyebrow-dot" /> Give it a try</p>
             <h2 id="sample-heading">Tap through a sample day.</h2>
-            <p>Mark an action done or move it to tomorrow. This small demo won’t save anything.</p>
+            <p className="handrawn-copy">Mark an action done or move it to tomorrow. This small demo won’t save anything.</p>
           </div>
         </ScrollReveal>
         <ScrollReveal delay={35}>
@@ -267,7 +264,7 @@ function HomePage() {
           <div className="change-copy">
             <p className="eyebrow eyebrow-light"><span className="eyebrow-dot" /> If something comes up</p>
             <h2>Plans change.</h2>
-            <p>
+            <p className="handrawn-copy">
               Move one action or leave it open. The rest of your day can stay as it is.
             </p>
           </div>
@@ -283,10 +280,10 @@ function HomePage() {
         <div className="guest-copy">
           <p className="eyebrow"><span className="eyebrow-dot" /> Guest mode</p>
           <h2>Start without an account.</h2>
-          <p>
+          <p className="handrawn-copy">
             In the mobile app, Guest mode keeps planner data on this device. Add goals and routines, record daily actions, and write a reflection when you want to review the week.
           </p>
-          <p className="guest-note">
+          <p className="guest-note handrawn-copy">
             Reminders are scheduled on your device and depend on your notification settings.
           </p>
         </div>
@@ -306,7 +303,7 @@ function HomePage() {
           <div className="founder-story-copy">
             <p className="eyebrow"><span className="eyebrow-dot" /> A personal reason</p>
             <h2 id="founder-heading">A little more intention for the life you’re building.</h2>
-            <p>
+            <p className="handrawn-copy">
               DayKindle began with my own routines, priorities, and Christian faith. I wanted a planner that could give them room in an ordinary day, then decided to share what I was building.
             </p>
           </div>
@@ -314,7 +311,7 @@ function HomePage() {
             <a className="about-primary-link" href="/about">
               The story of DayKindle <ArrowRight size={16} aria-hidden="true" />
             </a>
-            <a className="founder-author-link" href="/author">About Joshua</a>
+            <a className="founder-author-link" href="/about">About the author</a>
           </div>
         </div>
       </section>
