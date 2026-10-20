@@ -19,7 +19,7 @@ import {
   useWindowDimensions,
   type TextInput as NativeTextInput,
 } from 'react-native';
-import { router, useNavigationContainerRef } from 'expo-router';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, FadeIn } from 'react-native-reanimated';
 import { posthog } from '../../lib/posthog';
@@ -173,7 +173,6 @@ export type HomeTab = 'today' | 'goals' | 'progress' | 'profile';
 type HomeScreenProps = { initialTab?: HomeTab; showTabBar?: boolean };
 
 export default function HomeScreen({ initialTab = 'today', showTabBar = true }: HomeScreenProps) {
-  const rootNavigation = useNavigationContainerRef();
   const palette = useTheme();
   const colors = palette;  const styles = useThemedStyles(createHomeScreenStyles);
   const plannerSession = useHomeSession();
@@ -279,8 +278,8 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   const [notificationRepeat, setNotificationRepeat] = useState<NotificationReminder['repeat']>('once');
   const [notificationDate, setNotificationDate] = useState(dateKey());
   const didSyncReminders = useRef(false);
-  const { width: windowWidth, height: windowHeight, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight, fontScale } = useWindowDimensions();
   const tabBarBottomOffset = Math.max(insets.bottom, 12);
   const tabBarContainerHeight = TAB_BAR_HEIGHT + LayoutSpacing.control + tabBarBottomOffset;
   const tabBarReservedBottomSpace = TAB_BAR_FOOTER_FADE_HEIGHT + tabBarContainerHeight;
@@ -800,10 +799,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
     setActiveTab(tab);
   };
   const resetToSignIn = () => {
-    rootNavigation.resetRoot({
-      index: 0,
-      routes: [{ name: 'index', params: { mode: 'auth' } }],
-    });
+    router.replace('/auth');
   };
   const deleteAccount = async (wasSignedIn: boolean) => {
     if (accountActionInProgress) return;
