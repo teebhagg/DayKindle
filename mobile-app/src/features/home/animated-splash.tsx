@@ -15,11 +15,13 @@ const POST_REVEAL_HOLD_MS = 1550;
 const LOGO_EXIT_DURATION = 750;
 const DESTINATION_FADE_DURATION_MS = 200;
 const REDUCED_MOTION_FADE_DURATION_MS = 100;
+const SKIA_FONT_FALLBACK_MS = 2500;
 const WORDMARK = 'DayKindle';
 const WORDMARK_FONT_SIZE = 56;
 const WORDMARK_HEIGHT = 72;
 
 type AnimatedSplashProps = {
+  readyToAnimate: boolean;
   readyToTransition: boolean;
   target: SplashTarget | null;
   onRevealComplete: () => void;
@@ -27,10 +29,11 @@ type AnimatedSplashProps = {
   onTransitionComplete: () => void;
 };
 
-export function AnimatedSplash({ readyToTransition, target, onRevealComplete, onScreenRevealStart, onTransitionComplete }: AnimatedSplashProps) {
+export function AnimatedSplash({ readyToAnimate, readyToTransition, target, onRevealComplete, onScreenRevealStart, onTransitionComplete }: AnimatedSplashProps) {
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const progress = useSharedValue(0);
+  const animationStarted = useSharedValue(false);
   const transitionProgress = useSharedValue(0);
   const destinationRevealProgress = useSharedValue(0);
   const logoExitProgress = useSharedValue(0);
@@ -74,6 +77,16 @@ export function AnimatedSplash({ readyToTransition, target, onRevealComplete, on
   const hasTarget = Boolean(target);
 
   useEffect(() => {
+    if (!readyToAnimate || animationStarted.value) return;
+    if (!handwrittenFont) {
+      const fallbackTimer = setTimeout(() => {
+        if (animationStarted.value) return;
+        animationStarted.value = true;
+        completeReveal();
+      }, SKIA_FONT_FALLBACK_MS);
+      return () => clearTimeout(fallbackTimer);
+    }
+    animationStarted.value = true;
     const duration = reduceMotion ? 180 : REVEAL_DURATION;
     progress.value = withSequence(
       withTiming(1, { duration, easing: Easing.out(Easing.cubic) }),
@@ -85,7 +98,7 @@ export function AnimatedSplash({ readyToTransition, target, onRevealComplete, on
     return () => {
       cancelAnimation(progress);
     };
-  }, [completeReveal, progress, reduceMotion]);
+  }, [animationStarted, completeReveal, handwrittenFont, progress, readyToAnimate, reduceMotion]);
   useEffect(() => {
     if (!readyToTransition || transitionStarted.current) return;
     transitionStarted.current = true;
@@ -124,17 +137,16 @@ export function AnimatedSplash({ readyToTransition, target, onRevealComplete, on
   const targetTranslateY = target ? target.y + target.height / 2 - startLogoCenterY : 0;
   const targetScale = target ? target.width / logoSize : 1;
   const logoStyle = useAnimatedStyle(() => {
-    const revealProgress = Math.min(1, progress.value);
     const flightProgress = target && !reduceMotion ? Math.min(1, transitionProgress.value) : 0;
     const exitProgress = !target || reduceMotion ? logoExitProgress.value : 0;
     return {
-    opacity: revealProgress * (1 - exitProgress),
-    transform: [
-      { translateX: targetTranslateX * flightProgress },
-      { translateY: targetTranslateY * flightProgress },
-      { scale: (reduceMotion ? 1 : 0.965 + revealProgress * 0.035) * (1 + (targetScale - 1) * flightProgress) },
-    ],
-  };
+      opacity: 1 - exitProgress,
+      transform: [
+        { translateX: targetTranslateX * flightProgress },
+        { translateY: targetTranslateY * flightProgress },
+        { scale: 1 + (targetScale - 1) * flightProgress },
+      ],
+    };
   }, [reduceMotion, targetScale, targetTranslateX, targetTranslateY]);
   const wordmarkStyle = useAnimatedStyle(() => {
     const flightFade = target && !reduceMotion ? Math.min(1, transitionProgress.value) : 0;

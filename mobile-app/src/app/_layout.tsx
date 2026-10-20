@@ -15,25 +15,24 @@ import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from '../lib/posthog';
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'DeliciousHandrawn-Regular': require('../../assets/fonts/DeliciousHandrawn-Regular.ttf'),
     Satoshi: require('../../assets/fonts/Satoshi-Variable.ttf'),
   });
-
-  if (!fontsLoaded) return null;
+  const startupAssetsReady = fontsLoaded || Boolean(fontError);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <HomeSessionProvider>
-          <StyledAppContent />
+        <HomeSessionProvider startupAssetsReady={startupAssetsReady}>
+          <StyledAppContent startupAssetsReady={startupAssetsReady} />
         </HomeSessionProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-function StyledAppContent() {
+function StyledAppContent({ startupAssetsReady }: { startupAssetsReady: boolean }) {
   const { visualStyle, storageStatus, retrySave } = useHomeSession();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -46,14 +45,14 @@ function StyledAppContent() {
           <StatusBar barStyle={splashTransitionReady ? 'dark-content' : 'light-content'} backgroundColor="transparent" translucent />
           <View style={{ flex: 1, backgroundColor: theme.background }}>
             {storageStatus === 'save-error' || storageStatus === 'recovery' ? <View style={{ paddingTop: insets.top, paddingHorizontal: 12, paddingBottom: 8 }}><Feedback severity={storageStatus === 'save-error' ? 'error' : 'warning'} message={storageStatus === 'save-error' ? 'Could not save your changes on this device. Keep the app open and try again.' : 'A backup was restored. Save it on this device to continue.'} action={{ label: 'Save again', onPress: retrySave }} /></View> : null}
-            {posthog ? (
+            {startupAssetsReady && (posthog ? (
               <PostHogProvider client={posthog} autocapture={{ captureScreens: false, captureTouches: false }}>
                 <PostHogScreenTracker />
                 <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }} />
               </PostHogProvider>
             ) : (
               <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }} />
-            )}
+            ))}
           </View>
         </AccountProvider>
       </ToastProvider>

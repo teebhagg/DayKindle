@@ -192,7 +192,7 @@ export async function deleteLocalAccountData() {
   await writeQueue;
 }
 
-export function HomeSessionProvider({ children }: { children: ReactNode }) {
+export function HomeSessionProvider({ children, startupAssetsReady = true }: { children: ReactNode; startupAssetsReady?: boolean }) {
   const palette = useTheme();
   const [session, setSession] = useState(sessionSnapshot);
   const [hydrated, setHydrated] = useState(false);
@@ -232,15 +232,15 @@ export function HomeSessionProvider({ children }: { children: ReactNode }) {
   const writesBlocked = useRef(false);
   const lastAttempt = useRef('');
   useEffect(() => {
-    if (!hydrated || !splashRevealCompleted || splashTargetDecision === 'pending') return;
+    if (!startupAssetsReady || !hydrated || !splashRevealCompleted || splashTargetDecision === 'pending') return;
     const timer = setTimeout(() => setSplashTransitionReady(true), 80);
     return () => clearTimeout(timer);
-  }, [hydrated, splashRevealCompleted, splashTargetDecision]);
+  }, [hydrated, splashRevealCompleted, splashTargetDecision, startupAssetsReady]);
   useEffect(() => {
-    if (!hydrated || !splashRevealCompleted || splashTargetDecision !== 'pending') return;
+    if (!startupAssetsReady || !hydrated || splashTargetDecision !== 'pending') return;
     const timer = setTimeout(reportNoSplashTarget, 250);
     return () => clearTimeout(timer);
-  }, [hydrated, reportNoSplashTarget, splashRevealCompleted, splashTargetDecision]);
+  }, [hydrated, reportNoSplashTarget, splashTargetDecision, startupAssetsReady]);
   useEffect(() => { const syncSession = (next: SessionState) => setSession(next); subscribers.add(syncSession); return () => { subscribers.delete(syncSession); }; }, []);
   useEffect(() => {
     let active = true;
@@ -434,6 +434,7 @@ export function HomeSessionProvider({ children }: { children: ReactNode }) {
           </View>
         ) : children : null}
         {!initialBootComplete && <AnimatedSplash
+          readyToAnimate={startupAssetsReady && hydrated && splashTargetDecision !== 'pending'}
           readyToTransition={splashTransitionReady}
           target={splashTarget}
           onRevealComplete={onSplashRevealComplete}
