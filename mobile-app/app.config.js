@@ -4,6 +4,8 @@ const plist = require('@expo/plist').default;
 
 const GOOGLE_PLUGIN = 'react-native-nitro-google-signin';
 const SAFE_BOTTOM_SHEET_PLUGIN = './plugins/with-expo-ui-bottom-sheet-safe-top';
+const EAS_DEBUG_SIGNING_PLUGIN = './plugins/with-daykindle-eas-debug-signing';
+const ANDROID_ICON_SAFE_ZONE_PLUGIN = './plugins/with-daykindle-android-icon-safe-zone';
 
 module.exports = ({ config }) => {
   const iosGoogleServicesFile = process.env.GOOGLE_IOS_SERVICES_FILE?.trim() || './GoogleServices-Info.plist';
@@ -41,10 +43,12 @@ module.exports = ({ config }) => {
 
   const plugins = (config.plugins ?? []).filter((plugin) => {
     const name = Array.isArray(plugin) ? plugin[0] : plugin;
-    return name !== GOOGLE_PLUGIN && name !== SAFE_BOTTOM_SHEET_PLUGIN;
+    return name !== GOOGLE_PLUGIN && name !== SAFE_BOTTOM_SHEET_PLUGIN && name !== EAS_DEBUG_SIGNING_PLUGIN && name !== ANDROID_ICON_SAFE_ZONE_PLUGIN;
   });
 
   plugins.push(SAFE_BOTTOM_SHEET_PLUGIN);
+  plugins.push(EAS_DEBUG_SIGNING_PLUGIN);
+  plugins.push(ANDROID_ICON_SAFE_ZONE_PLUGIN);
   if (googleSignIn.nativeConfigReady) {
     plugins.push(GOOGLE_PLUGIN);
   }
