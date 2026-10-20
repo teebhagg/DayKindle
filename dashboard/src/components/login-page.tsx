@@ -1,6 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
+import { LockKeyhole } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import LoginForm from '@/components/login-form'
 
 export default function LoginPage() {
@@ -13,7 +12,7 @@ export default function LoginPage() {
           <h1 id="login-heading">Welcome back.</h1>
           <p>Sign in with your team email and password.</p>
           <LoginForm />
-          <Link className="login-back" href="/"><ArrowLeft size={14} /> DayKindle dashboard</Link>
+          <p className="login-footnote"><LockKeyhole size={13} aria-hidden="true" /> Approved team administrators only</p>
         </div>
       </section>
     </main>

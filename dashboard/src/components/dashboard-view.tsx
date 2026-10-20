@@ -10,6 +10,7 @@ import {
   Cloud,
   Database,
   Files,
+  RefreshCw,
   Sparkles,
   UsersRound,
   KeyRound,
@@ -22,6 +23,7 @@ import { Card } from '@/components/ui/card'
 import { signOut } from '@/app/actions'
 import type { DashboardDatabaseMetrics, DashboardMetrics } from '@/lib/dashboard-data'
 import { ActivityChart, EngagementChart } from '@/components/dashboard-charts'
+import DashboardNavigation from '@/components/dashboard-navigation'
 
 type Props = {
   state: 'ready' | 'analytics-not-configured' | 'analytics-error'
@@ -87,11 +89,7 @@ export default function DashboardView({ state, metrics, database, databaseState 
           <span><strong>DayKindle</strong><small>Team analytics</small></span>
         </div>
         <p className="sidebar-label">Workspace</p>
-        <nav className="sidebar-nav" aria-label="Dashboard navigation">
-          <a className="sidebar-link active" href="#overview" aria-current="location" aria-label="Overview" title="Overview"><Activity size={17} aria-hidden="true" /><span>Overview</span></a>
-          <a className="sidebar-link" href="#activity" aria-label="Activity" title="Activity"><ClipboardList size={17} aria-hidden="true" /><span>Activity</span></a>
-          <a className="sidebar-link" href="#cohorts" aria-label="Cohort metrics" title="Cohort metrics"><UsersRound size={17} aria-hidden="true" /><span>Cohorts</span></a>
-        </nav>
+        <DashboardNavigation />
         <p className="sidebar-foot">Production events only.<br />No personal plan or reflection content is shown.</p>
       </aside>
 
@@ -103,21 +101,26 @@ export default function DashboardView({ state, metrics, database, databaseState 
           </div>
           <div className="topbar-right">
             <Badge variant="secondary"><span className="status-dot" /> Production</Badge>
-            <Link className="account-settings-link" href="/settings"><KeyRound size={14} aria-hidden="true" /><span>Password</span></Link>
+            <form className="refresh-form" action="/" method="get">
+              <Button className="refresh-button" variant="outline" size="sm" type="submit" aria-label="Refresh report">
+                <RefreshCw size={14} aria-hidden="true" /><span>Refresh</span>
+              </Button>
+            </form>
+            <Link className="account-settings-link" href="/settings" aria-label="Account settings"><KeyRound size={14} aria-hidden="true" /><span>Password</span></Link>
             <form action={signOut}>
               <Button className="logout-button" variant="outline" size="sm" type="submit">Sign out</Button>
             </form>
           </div>
         </header>
 
-        <main className="dashboard-main" id="overview">
-          <div className="dashboard-title-row">
+        <main className="dashboard-main">
+          <div className="dashboard-title-row" id="overview">
             <div>
               <p className="page-kicker"><span className="eyebrow-dot" /> Team analytics</p>
               <h1 className="dashboard-title">Product activity</h1>
-          <p className="dashboard-subtitle">User counts and recorded product activity from production.</p>
+              <p className="dashboard-subtitle">User counts and recorded product activity from production.</p>
             </div>
-            <span className="range-label"><CalendarDays size={14} aria-hidden="true" /> 7-day summary <span className="range-separator" /> Production</span>
+            <span className="range-label"><CalendarDays size={14} aria-hidden="true" /> Rolling 7 days</span>
           </div>
 
           {state !== 'ready' && (
@@ -142,9 +145,9 @@ export default function DashboardView({ state, metrics, database, databaseState 
           )}
 
           <>
-              <section className="stats-grid" aria-label="Account and usage metrics">
+              <section className={metrics ? 'stats-grid' : 'stats-grid stats-grid-sparse'} aria-label="Account and usage metrics">
+                {metrics && <MetricCard className="metric-card-featured" title="Engaged IDs" value={numberText(metrics.engaged7d)} note="IDs with a completion, check-in, or reflection · 7 days" icon={Activity} />}
                 <MetricCard title="Confirmed users" value={database ? numberText(database.confirmedUsers) : '—'} note={database ? 'Confirmed Auth accounts · Supabase' : 'Supabase aggregate unavailable'} icon={UsersRound} />
-                {metrics && <MetricCard title="Active this week" value={numberText(metrics.engaged7d)} note="Completed action, check-in, or reflection" icon={Activity} />}
                 {metrics && <MetricCard title="Planner activity" value={numberText(metrics.activitySignals7d)} note="Planner, check-in, and reflection events · 7 days" icon={ClipboardList} />}
                 {metrics && <MetricCard title="Exception events" value={numberText(metrics.exceptionSignals7d)} note="PostHog `$exception` events · 7 days" icon={AlertTriangle} />}
               </section>
@@ -168,7 +171,7 @@ export default function DashboardView({ state, metrics, database, databaseState 
                 {!database && (
                   <div className="database-unavailable squircle-surface" role="status">
                     <span className="report-state-kicker">DATABASE REPORT UNAVAILABLE</span>
-                    <p>{databaseState === 'unavailable' ? 'Apply the aggregate metrics migration to enable account and cloud-sync totals.' : 'The database report is not ready.'}</p>
+                    <p>{databaseState === 'unavailable' ? 'The aggregate report could not load. Confirm the migration and Supabase connection.' : 'The database report is not ready.'}</p>
                   </div>
                 )}
               </section>
