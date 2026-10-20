@@ -1,6 +1,8 @@
 import { useContext } from 'react';
-import { Pressable, Platform, StyleSheet, Text, View } from 'react-native';
+import { Radius } from '@/constants/theme';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Path, Svg } from 'react-native-svg';
+import { SquirclePressable } from '../../components/squircle-card';
 import { VisualStyleContext } from '../home/visual-style-context';
 import { authProviderLabelTypography } from './auth-provider-typography';
 
@@ -9,7 +11,8 @@ export default function AppleAuthButton({ onPress, disabled, labelFontSize = 16 
   if (Platform.OS !== 'ios') return null;
 
   return (
-    <Pressable
+    <SquirclePressable
+      pill
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [styles.button, pressed && !disabled && styles.buttonPressed, disabled && styles.buttonDisabled]}
@@ -23,12 +26,12 @@ export default function AppleAuthButton({ onPress, disabled, labelFontSize = 16 
         </Svg>
         <Text style={[styles.label, authProviderLabelTypography(visualStyle, labelFontSize)]}>Sign in with Apple</Text>
       </View>
-    </Pressable>
+    </SquirclePressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { width: '100%', height: 56, borderRadius: 28, backgroundColor: '#000000', overflow: 'hidden' },
+  button: { width: '100%', height: 56, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: '#000000', overflow: 'hidden' },
   buttonPressed: { backgroundColor: '#1A1A1A' },
   buttonDisabled: { opacity: 0.6 },
   content: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 18 },

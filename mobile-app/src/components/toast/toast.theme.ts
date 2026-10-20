@@ -1,4 +1,4 @@
-import { Colors, type AppTheme } from '@/constants/theme';
+import { Colors, Radius, type AppTheme } from '@/constants/theme';
 import { StyleSheet, useColorScheme } from 'react-native';
 import type { TToastColors, TToastThemeMode } from './Toast.types';
 
@@ -64,7 +64,7 @@ export function createToastStyles(colors: TToastColors) {
     icon: {
       width: 34,
       height: 34,
-      borderRadius: 12,
+      borderRadius: Radius.small,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -93,7 +93,9 @@ export function createToastStyles(colors: TToastColors) {
     action: {
       minHeight: 44,
       justifyContent: 'center',
-      paddingHorizontal: 6,
+      paddingHorizontal: 10,
+      borderRadius: Radius.pill,
+      borderCurve: 'circular',
     },
     actionText: {
       fontFamily: 'Satoshi',
@@ -105,6 +107,8 @@ export function createToastStyles(colors: TToastColors) {
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: Radius.pill,
+      borderCurve: 'circular',
     },
     closeText: {
       fontFamily: 'Satoshi',

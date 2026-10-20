@@ -3,11 +3,11 @@ import { SquircleCard, SquirclePressable, type SquirclePressableProps } from '@/
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, platformCardRadius, type AppTheme } from '@/constants/theme';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
+import { Redirect, router, useLocalSearchParams, usePathname } from 'expo-router';
 import { posthog } from '../lib/posthog';
 import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text as NativeText, View, useWindowDimensions, type LayoutChangeEvent, type PressableProps, type TextProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Alert, Image, Platform, Pressable, StyleSheet, Text as NativeText, View, useWindowDimensions, type LayoutChangeEvent, type PressableProps, type TextProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
   FadeIn,
@@ -22,6 +22,7 @@ import Animated, {
   interpolate,
   interpolateColor,
   useReducedMotion,
+  useAnimatedScrollHandler,
   useAnimatedProps,
   useSharedValue,
   useAnimatedStyle,
@@ -39,7 +40,7 @@ import { IntroSkiaBlob } from '../components/intro-skia-blob';
 import NativeActionButton from '../components/native-action-button';
 import { BlurView } from 'expo-backdrop';
 import { ProgressiveEdgeBlur } from '../components/progressive-edge-blur';
-import { APP_STANDARD_HEADER_HEIGHT, scaleHeaderBlurIntensity } from '../components/header-gradient-metrics';
+import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT } from '../components/header-gradient-metrics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dayScheduleTemplates } from '../features/home/day-schedules';
 import { seedHomeSession, useHomeSession, type AccountType, type OnboardingProfile, type VisualStyle } from '../features/home/home-session';
@@ -52,6 +53,7 @@ import { authProviderLabelTypography } from '../features/account/auth-provider-t
 import { WelcomeAuthScreen } from '../features/account/welcome-auth-screen';
 import { toast } from '../components/toast';
 import { useSplashTargetReporter } from '../features/home/splash-transition-context';
+import { SyncConsentDialog } from '../features/account/sync-consent-dialog';
 
 type Step = 0 | 1 | 2 | 3 | 4;
 function Text({ style, display = false, ...props }: TextProps & { display?: boolean }) {
@@ -264,8 +266,9 @@ const DAYKINDLE_LOGO = require('../../assets/images/daykindle-logo.png');
 export default function OnboardingScreen() {
   const palette = useTheme();  const { ink, green, paper } = palette; const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ mode?: string }>();
+  const pathname = usePathname();
   const isLinkMode = params.mode === 'link';
-  const isAuthMode = params.mode === 'auth' || params.mode === 'welcome';
+  const isAuthMode = params.mode === 'auth' || params.mode === 'welcome' || pathname === '/auth';
   const planner = useHomeSession();
   const { onboardingCompleted, onboarding, setOnboarding, setOnboardingCompleted, startFreshGuestData } = planner;
   const account = useAccount();
@@ -284,6 +287,8 @@ export default function OnboardingScreen() {
   const [accountType, setAccountType] = useState<AccountType>('guest');
   const [syncConsent, setSyncConsent] = useState(false);
   const [syncConsentAt, setSyncConsentAt] = useState<string | null>(null);
+  const [syncConsentDialogVisible, setSyncConsentDialogVisible] = useState(false);
+  const syncConsentResolver = useRef<((sync: boolean) => void) | null>(null);
   const [accountSkipBusy, setAccountSkipBusy] = useState(false);
   const [cloudCheckState, setCloudCheckState] = useState<{ userId: string; status: 'checking' | 'found' | 'not-found' | 'error' } | null>(null);
   const [cloudCheckAttempt, setCloudCheckAttempt] = useState(0);
@@ -292,6 +297,9 @@ export default function OnboardingScreen() {
     const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
+  const contentScrollY = useSharedValue(0);
+  const onContentScroll = useAnimatedScrollHandler({ onScroll: (event) => { contentScrollY.value = event.contentOffset.y; } });
+  useEffect(() => { contentScrollY.value = 0; }, [contentScrollY, introStep, isLinkMode, step]);
   // Route params may change while this route remains mounted; preserve the intended auth-entry reset.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -375,7 +383,18 @@ export default function OnboardingScreen() {
     customAreaName: customAreaName.trim(),
   });
   const continueAfterIntro = () => setStep(1);
+  const resolveSyncConsent = (sync: boolean) => {
+    const resolve = syncConsentResolver.current;
+    syncConsentResolver.current = null;
+    setSyncConsentDialogVisible(false);
+    resolve?.(sync);
+  };
   const requestSyncConsent = () => new Promise<boolean>((resolve) => {
+    if (Platform.OS === 'android') {
+      syncConsentResolver.current = resolve;
+      setSyncConsentDialogVisible(true);
+      return;
+    }
     Alert.alert(
       'Sync your planner?',
       'Choose whether to sync your planner to this account or keep it on this device. You can change this in Profile.',
@@ -541,7 +560,7 @@ export default function OnboardingScreen() {
       <View style={[styles.safeArea, { minHeight: windowHeight, justifyContent: 'center', paddingHorizontal: 28, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text display style={{ fontSize: 27.5, lineHeight: 35.2, fontWeight: '600', color: ink, textAlign: 'center' }}>{initialCloudCheckStatus === 'error' ? 'Could not check your saved setup.' : 'Checking your saved setup.'}</Text>
         <Text style={[styles.body, { maxWidth: 340, alignSelf: 'center', textAlign: 'center' }]}>{initialCloudCheckStatus === 'error' ? 'Your account is connected, but its saved planner could not be checked. Retry before starting onboarding.' : 'Looking for onboarding already saved to this account.'}</Text>
-        {initialCloudCheckStatus === 'error' ? <Pressable onPress={() => setCloudCheckAttempt((value) => value + 1)} style={[styles.primaryButton, { minHeight: 52, alignSelf: 'center', marginTop: 24 }]} accessibilityRole="button"><Text style={styles.primaryButtonText}>Try again</Text></Pressable> : null}
+        {initialCloudCheckStatus === 'error' ? <SquirclePressable onPress={() => setCloudCheckAttempt((value) => value + 1)} style={[styles.primaryButton, { minHeight: 52, alignSelf: 'center', marginTop: 24 }]} accessibilityRole="button"><Text style={styles.primaryButtonText}>Try again</Text></SquirclePressable> : null}
       </View>
     </VisualStyleContext.Provider>;
   }
@@ -646,24 +665,24 @@ export default function OnboardingScreen() {
         onSkip={() => void skipAccountSetup()}
       />}
 
-      {showingAccountChoice && isLinkMode && <ScrollView contentContainerStyle={[styles.content, styles.introContent, { minHeight: windowHeight, paddingTop: insets.top + 100, paddingBottom: insets.bottom + 116 }]} showsVerticalScrollIndicator={false}>
+      {showingAccountChoice && isLinkMode && <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, styles.introContent, { minHeight: windowHeight, paddingTop: insets.top + 100, paddingBottom: insets.bottom + 116 }]} showsVerticalScrollIndicator={false}>
         <Animated.View entering={reduceMotion ? FadeIn.duration(80) : FadeInUp.duration(400).delay(30)} style={styles.accountIllustration}><View style={styles.accountIllustrationRing} /><View style={styles.accountIllustrationIcon}><AppIcon name="cloud" size={32} color={green} /></View><View style={styles.localBadge}><AppIcon name="check" size={15} color={green} /></View></Animated.View>
         <Animated.View entering={reduceMotion ? FadeIn.duration(80) : FadeInUp.duration(360).delay(90)}><Text style={styles.eyebrow}>{isLinkMode ? 'CONNECT YOUR ACCOUNT' : 'YOUR PROGRESS, YOUR CHOICE'}</Text><Text display style={styles.heading}>{isLinkMode ? 'Sign in to sync.' : 'Choose how to begin.'}</Text><Text style={styles.body}>{isLinkMode ? 'Your current guest data stays on this device until you approve syncing.' : 'Sign in to sync across devices, or continue as a guest. You can start with a clean slate.'}</Text></Animated.View>
         <View style={styles.accountActions}>
-          <Pressable onPress={() => void handleProviderSignIn('google')} disabled={account.signingIn || accountSkipBusy || !account.configured} style={[styles.accountProviderButton, (account.signingIn || accountSkipBusy || !account.configured) && styles.accountProviderButtonDisabled]} accessibilityRole="button" accessibilityLabel="Continue with Google">
+          <SquirclePressable pill onPress={() => void handleProviderSignIn('google')} disabled={account.signingIn || accountSkipBusy || !account.configured} style={[styles.accountProviderButton, (account.signingIn || accountSkipBusy || !account.configured) && styles.accountProviderButtonDisabled]} accessibilityRole="button" accessibilityLabel="Continue with Google">
             <GoogleGlyph size={19} /><NativeText style={[styles.accountProviderText, authProviderLabelTypography(visualStyle ?? 'formal', 14.3)]}>{account.signingIn ? 'Connecting…' : 'Continue with Google'}</NativeText>
-          </Pressable>
+          </SquirclePressable>
           {Platform.OS === 'ios' && <AppleAuthButton onPress={() => void handleProviderSignIn('apple')} disabled={account.signingIn || accountSkipBusy || !account.configured} labelFontSize={14.3} />}
-          {!isLinkMode && <Pressable onPress={continueAsGuest} disabled={account.signingIn || accountSkipBusy} style={styles.accountProviderButton} accessibilityRole="button" accessibilityLabel="Continue as guest"><View style={styles.accountProviderMark}><AppIcon name="profile" size={19} color={green} /></View><Text style={styles.accountProviderText}>Guest</Text></Pressable>}
+          {!isLinkMode && <SquirclePressable pill onPress={continueAsGuest} disabled={account.signingIn || accountSkipBusy} style={styles.accountProviderButton} accessibilityRole="button" accessibilityLabel="Continue as guest"><View style={styles.accountProviderMark}><AppIcon name="profile" size={19} color={green} /></View><Text style={styles.accountProviderText}>Guest</Text></SquirclePressable>}
           {!account.configured && <Text style={styles.localPrivacyNote}>Provider sign-in needs Supabase project settings and platform credentials. Guest mode is ready now.</Text>}
           <Pressable onPress={() => router.back()} style={styles.accountSkipAction} accessibilityRole="button"><Text style={styles.accountSkipText}>Not now</Text></Pressable>
         </View>
         <Text style={styles.localPrivacyNote}>Guest plans and check-ins stay on this device. Sync only starts after you choose it.</Text>
-      </ScrollView>}
+      </Animated.ScrollView>}
 
       {step === 2 && (
         <>
-          <ScrollView contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+          <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>START WITH WHAT MATTERS</Text>
             <Text display style={styles.heading}>What would you like to focus on?</Text>
             <Text style={styles.body}>Choose any life areas, then pick one matching starter goal if you want. You can change these any time.</Text>
@@ -702,19 +721,19 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionLabel}>ONE STARTER GOAL · OPTIONAL</Text>
             {starterPlans.filter((plan) => selectedAreas.includes(plan.area)).map((plan) => {
               const selected = selectedPlans.includes(plan.id);
-              return <SquirclePressable radiusRatio={0.5} exactSquircle key={plan.id} onPress={() => togglePlan(plan.id)} style={[styles.starterGoalChoice, selected && styles.starterGoalChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
+              return <SquirclePressable exactSquircle key={plan.id} onPress={() => togglePlan(plan.id)} style={[styles.starterGoalChoice, selected && styles.starterGoalChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
                 <View style={styles.starterGoalTop}><AppIcon name={plan.icon} size={19} color={green} /><Text style={styles.starterGoalTitle}>{plan.title}</Text><View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>{selected && <View style={styles.radioDot} />}</View></View>
                 <Text style={styles.starterGoalDetail}>{plan.detail}</Text><Text style={styles.starterGoalFirstStep}>First step · {plan.firstStep}</Text>
               </SquirclePressable>;
             })}
             {!selectedAreas.length && <Text style={styles.selectedHint}>Choose an area above to see a matching goal. You can also skip both.</Text>}
-          </ScrollView>
+          </Animated.ScrollView>
         </>
       )}
 
       {step === 3 && (
         <>
-          <ScrollView contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+          <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>MAKE IT YOURS</Text>
             <Text display style={styles.heading}>Choose your{ '\n' }appearance style.</Text>
             <Text style={styles.body}>Choose a look for DayKindle, or keep the refined default. You can change this later in Appearance.</Text>
@@ -753,31 +772,31 @@ export default function OnboardingScreen() {
               </MotionPressable>
             </View>
             <Text style={styles.selectedHint}>{visualStyle ? 'You can change this later in Appearance.' : 'Refined is selected by default.'}</Text>
-          </ScrollView>
+          </Animated.ScrollView>
         </>
       )}
 
       {step === 4 && (
-        <ScrollView contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
           <Text style={styles.eyebrow}>OPTIONAL ROUTINE</Text>
           <Text display style={styles.heading}>Would a simple rhythm help?</Text>
           <Text style={styles.body}>Start with a flexible outline for weekdays or weekends. You can edit each block later in Templates.</Text>
-          <SquirclePressable radiusRatio={0.5} exactSquircle onPress={() => setRoutineTemplateId(null)} style={[styles.routineChoice, routineTemplateId === null && styles.routineChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: routineTemplateId === null }}>
+          <SquirclePressable exactSquircle onPress={() => setRoutineTemplateId(null)} style={[styles.routineChoice, routineTemplateId === null && styles.routineChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: routineTemplateId === null }}>
             <View style={styles.routineChoiceIcon}><AppIcon name="sparkle" size={19} color={green} /></View><View style={styles.routineChoiceCopy}><Text style={styles.routineChoiceTitle}>No routine for now</Text><Text style={styles.routineChoiceDetail}>You can add one whenever you are ready.</Text></View><View style={[styles.radioOuter, routineTemplateId === null && styles.radioOuterSelected]}>{routineTemplateId === null && <View style={styles.radioDot} />}</View>
           </SquirclePressable>
           {dayScheduleTemplates.map((schedule) => {
             const selected = routineTemplateId === schedule.id;
-            return <SquirclePressable radiusRatio={0.5} exactSquircle key={schedule.id} onPress={() => setRoutineTemplateId(schedule.id)} style={[styles.routineChoice, selected && styles.routineChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
+            return <SquirclePressable exactSquircle key={schedule.id} onPress={() => setRoutineTemplateId(schedule.id)} style={[styles.routineChoice, selected && styles.routineChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
               <View style={styles.routineChoiceIcon}><AppIcon name={schedule.dayType === 'weekday' ? 'clock' : 'sun'} size={19} color={green} /></View><View style={styles.routineChoiceCopy}><Text style={styles.routineChoiceTitle}>{schedule.title}</Text><Text style={styles.routineChoiceDetail}>{(schedule.dayType === 'weekday' ? 'Apply Monday to Friday' : 'Apply Saturday and Sunday') + ' · ' + schedule.blocks.length + ' flexible blocks'}</Text></View><View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>{selected && <View style={styles.radioDot} />}</View>
             </SquirclePressable>;
           })}
-          {accountType !== 'guest' && <SquircleSurface style={styles.syncConsentNote}><AppIcon name="cloud" size={17} color={green} /><Text style={styles.syncConsentCopy}>{syncConsent ? 'Sync is on. Your planner will be saved to your account.' : 'Sync is off. Your planner will stay on this device.'}</Text></SquircleSurface>}
-        </ScrollView>
+          {accountType !== 'guest' && <SquircleCard style={styles.syncConsentNote}><AppIcon name="cloud" size={17} color={green} /><Text style={styles.syncConsentCopy}>{syncConsent ? 'Sync is on. Your planner will be saved to your account.' : 'Sync is off. Your planner will stay on this device.'}</Text></SquircleCard>}
+        </Animated.ScrollView>
       )}
       </Animated.View>
       {!showingIntro && !(showingAccountChoice && !isLinkMode) && <View style={styles.headerOverlay}>
-        <View style={[styles.headerBlur, styles.solidHeader, { height: insets.top + APP_STANDARD_HEADER_HEIGHT }]}>
-          <View style={[styles.topBar, { height: insets.top + APP_STANDARD_HEADER_HEIGHT, paddingTop: insets.top }]}>
+        <View style={[styles.headerBlur, styles.solidHeader, { height: insets.top + APP_NON_TAB_HEADER_HEIGHT }]}>
+          <View style={[styles.topBar, { height: insets.top + APP_NON_TAB_HEADER_HEIGHT, paddingTop: insets.top }]}>
             <View style={styles.headerSide}>
           {step > 0 || showingIntro ? (
                 <Animated.View
@@ -824,7 +843,8 @@ export default function OnboardingScreen() {
         />
       )}
       {setupError ? <View style={{ padding: 16 }}><Feedback severity="error" message={setupError} action={{ label: 'Try again', onPress: () => void next(), disabled: finishingSetup }} /></View> : null}
-      {(step > 0 || showingIntro || showingAccountChoice) && !(showingAccountChoice && !isLinkMode) && <ProgressiveEdgeBlur edge="top" surfaceColor={paper} intensity={scaleHeaderBlurIntensity(75)} />}
+      {(step > 0 || showingIntro || showingAccountChoice) && !(showingAccountChoice && !isLinkMode) && <ProgressiveEdgeBlur edge="top" surfaceColor={paper} scrollProgress={contentScrollY} revealDistance={insets.top + APP_HEADER_FADE_CONTENT_HEIGHT} style={{ height: insets.top + APP_HEADER_FADE_CONTENT_HEIGHT }} />}
+      <SyncConsentDialog visible={syncConsentDialogVisible} onChoice={resolveSyncConsent} />
     </View>
     </VisualStyleContext.Provider>
   );
@@ -1010,9 +1030,9 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   stepContent: { flex: 1, overflow: 'hidden' },
   pressableFill: { width: '100%' },
   headerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, elevation: 20 },
-  headerBlur: { height: APP_STANDARD_HEADER_HEIGHT },
-  solidHeader: { backgroundColor: paper },
-  topBar: { height: APP_STANDARD_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerBlur: { height: APP_NON_TAB_HEADER_HEIGHT },
+  solidHeader: { backgroundColor: 'transparent' },
+  topBar: { height: APP_NON_TAB_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerSide: { width: 112, flexDirection: 'row', alignItems: 'center' },
   headerSideRight: { justifyContent: 'flex-end', gap: 6 },
   chromeFallback: { backgroundColor: palette.paper },
@@ -1054,7 +1074,7 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   introOrbit: { position: 'absolute', width: 108, height: 108 },
   introIcon: { width: 78, height: 78, alignItems: 'center', justifyContent: 'center' },
   introSparkle: { position: 'absolute', right: 0, top: 1, width: 32, height: 32, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
-  introCard: { minHeight: 90, marginTop: LayoutSpacing.section, padding: LayoutSpacing.cardInset, borderRadius: platformCardRadius(17.6), backgroundColor: palette.warmSurface, flexDirection: 'row', alignItems: 'center', gap: LayoutSpacing.related },
+  introCard: { minHeight: 90, marginTop: LayoutSpacing.section, padding: LayoutSpacing.cardInset, borderRadius: Radius.card, backgroundColor: palette.warmSurface, flexDirection: 'row', alignItems: 'center', gap: LayoutSpacing.related },
   introCardIcon: { width: 40, height: 40, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   introCardCopy: { flex: 1, gap: 4 },
   introCardTitle: { color: ink, fontSize: 14.3, fontWeight: '600' },
@@ -1064,25 +1084,25 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   introSkipOverlay: { position: 'absolute', right: 20, zIndex: 30 },
   accountIllustration: { width: 112, height: 112, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 29 },
   accountIllustrationRing: { position: 'absolute', width: 108, height: 108, borderRadius: 999, borderWidth: 1, borderColor: palette.line },
-  accountIllustrationIcon: { width: 78, height: 78, borderRadius: 27, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
+  accountIllustrationIcon: { width: 78, height: 78, borderRadius: Radius.hero, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   localBadge: { position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   accountActions: { gap: 11, marginTop: 23 },
-  accountProviderButton: { minHeight: 56, paddingHorizontal: 15, borderRadius: 18, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  accountProviderButton: { minHeight: 56, paddingHorizontal: 15, borderRadius: Radius.pill, borderCurve: 'circular', borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   accountProviderButtonDisabled: { opacity: 0.6 },
   accountProviderMark: { width: 30, height: 30, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   accountProviderText: { color: ink, fontSize: 14.3, fontWeight: '600' },
-  accountSkipAction: { minHeight: 42, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 15 },
+  accountSkipAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 18, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen },
   accountSkipText: { color: muted, fontSize: 13.2, fontWeight: '500' },
-  accountOption: { minHeight: 88, padding: 14, marginTop: 23, borderRadius: platformCardRadius(24.2), borderWidth: 1, borderColor: line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 11, opacity: 0.82 },
+  accountOption: { minHeight: 88, padding: 14, marginTop: 23, borderRadius: Radius.cardLarge, borderWidth: 1, borderColor: line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 11, opacity: 0.82 },
   comingSoonBadge: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.lightGreen },
   comingSoonText: { color: muted, fontSize: 8.8, fontWeight: '700', letterSpacing: 0.8 },
   localContinueButton: { minHeight: 56, paddingHorizontal: 19, marginTop: 13, borderRadius: 999, backgroundColor: palette.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   localContinueText: { color: palette.onAccent, fontSize: 14.3, fontWeight: '600' },
   localPrivacyNote: { color: palette.muted, fontSize: 11, lineHeight: 16.5, textAlign: 'center', marginTop: 11 },
-  customAreaInput: { height: 52, marginTop: 15, borderRadius: 16, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, paddingHorizontal: 14, color: ink, fontFamily: 'Satoshi', fontSize: 15.4 },
+  customAreaInput: { height: 52, marginTop: 15, borderRadius: Radius.control, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, paddingHorizontal: 14, color: ink, fontFamily: 'Satoshi', fontSize: 15.4 },
   selectionCount: { marginTop: 20, color: green, fontSize: 13.2, fontWeight: '500' },
   planList: { gap: 11, marginTop: 12 },
-  planCard: { borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(17.6), backgroundColor: palette.surface, padding: 13 },
+  planCard: { borderWidth: 1, borderColor: line, borderRadius: Radius.card, backgroundColor: palette.surface, padding: 13 },
   planCardSelected: { borderColor: palette.controlBorder, backgroundColor: palette.lightGreen },
   planSelectRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 11 },
   planAtLimit: { opacity: 0.55 },
@@ -1098,11 +1118,11 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   planPreviewBody: { color: muted, fontSize: 12.1, lineHeight: 17.6, fontWeight: '400' },
   planPreviewFootnote: { color: palette.muted, fontSize: 11, lineHeight: 15.4, fontWeight: '400' },
   planEditLabel: { color: palette.muted, fontSize: 11, fontWeight: '500', marginTop: 5 },
-  planEditInput: { minHeight: 42, borderRadius: 13, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, paddingHorizontal: 11, paddingVertical: 8, color: ink, fontFamily: 'Satoshi', fontSize: 13.2 },
+  planEditInput: { minHeight: 42, borderRadius: Radius.small, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, paddingHorizontal: 11, paddingVertical: 8, color: ink, fontFamily: 'Satoshi', fontSize: 13.2 },
   planActionInput: { minHeight: 58, textAlignVertical: 'top' },
-  emptyPlans: { alignItems: 'center', gap: 12, padding: 24, borderRadius: platformCardRadius(22.0), backgroundColor: palette.surface },
+  emptyPlans: { alignItems: 'center', gap: 12, padding: 24, borderRadius: Radius.cardLarge, backgroundColor: palette.surface },
   timeRow: { flexDirection: 'row', gap: 10, marginTop: 23 },
-  timeCard: { flex: 1, minWidth: 0, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(17.6), backgroundColor: palette.surface, padding: 13 },
+  timeCard: { flex: 1, minWidth: 0, borderWidth: 1, borderColor: line, borderRadius: Radius.card, backgroundColor: palette.surface, padding: 13 },
   timeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   timeLabel: { color: muted, fontSize: 11, fontWeight: '500' },
   timeInput: { marginTop: 10, minHeight: 38, color: ink, fontFamily: 'Satoshi', fontSize: 19.8, fontWeight: '600', padding: 0 },
@@ -1114,27 +1134,27 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   focusWindowTextSelected: { color: ink },
   heading: { fontFamily: 'DeliciousHandrawn-Regular', fontSize: 25.3, lineHeight: 28.6, letterSpacing: 0, color: ink },
   body: { fontSize: 15.4, lineHeight: 23.1, color: muted, marginTop: 12, maxWidth: 330, fontWeight: '400' },
-  areaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: LayoutSpacing.related, marginTop: LayoutSpacing.sectionLarge },
-  areaTile: { width: '48%', minHeight: 86, flexGrow: 1, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(26.4), paddingHorizontal: 14, paddingVertical: 10, backgroundColor: palette.surface, justifyContent: 'space-between' },
+  areaGrid: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', gap: LayoutSpacing.related, marginTop: LayoutSpacing.sectionLarge },
+  areaTile: { width: '48%', minHeight: 86, borderWidth: 1, borderColor: line, borderRadius: Radius.cardLarge, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: palette.surface, justifyContent: 'space-between' },
   areaTileSelected: { backgroundColor: palette.lightGreen, borderColor: palette.controlBorder },
   areaCheck: { position: 'absolute', top: 9, right: 9 },
   areaLabel: { fontFamily: 'Satoshi', color: palette.ink, fontSize: 11, fontWeight: '400' }, areaLabelSelected: { color: ink },
   selectedHint: { marginTop: 17, color: palette.muted, fontSize: 12.1, textAlign: 'center', fontWeight: '400' },
   sectionLabel: { marginTop: 25, marginBottom: 8, color: muted, fontSize: 10.5, letterSpacing: 0.8, fontWeight: '700' },
-  starterGoalChoice: { padding: 14, marginTop: 9, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(22.0), backgroundColor: palette.surface, gap: 6 },
+  starterGoalChoice: { padding: 14, marginTop: 9, borderWidth: 1, borderColor: line, borderRadius: Radius.cardLarge, backgroundColor: palette.surface, gap: 6 },
   starterGoalChoiceSelected: { borderColor: palette.controlBorder, backgroundColor: palette.lightGreen },
   starterGoalTop: { minHeight: 26, flexDirection: 'row', alignItems: 'center', gap: 9 },
   starterGoalTitle: { flex: 1, fontFamily: 'Satoshi', color: ink, fontSize: 13.2, fontWeight: '600' },
   starterGoalDetail: { fontFamily: 'Satoshi', color: muted, fontSize: 11.5, lineHeight: 16 },
   starterGoalFirstStep: { fontFamily: 'Satoshi', color: green, fontSize: 10.5, lineHeight: 15, marginTop: 3 },
   radioOuterSelected: { borderColor: green },
-  routineChoice: { minHeight: 74, padding: 13, marginTop: 10, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(22.0), backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  routineChoice: { minHeight: 74, padding: 13, marginTop: 10, borderWidth: 1, borderColor: line, borderRadius: Radius.cardLarge, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 11 },
   routineChoiceSelected: { borderColor: palette.controlBorder, backgroundColor: palette.lightGreen },
   routineChoiceIcon: { width: 37, height: 37, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   routineChoiceCopy: { flex: 1, gap: 4 },
   routineChoiceTitle: { fontFamily: 'Satoshi', color: ink, fontSize: 13.2, fontWeight: '600' },
   routineChoiceDetail: { fontFamily: 'Satoshi', color: muted, fontSize: 11, lineHeight: 16 },
-  syncConsentNote: { padding: 13, marginTop: 18, borderRadius: platformCardRadius(17.6), backgroundColor: palette.lightGreen, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  syncConsentNote: { padding: 13, marginTop: 18, borderRadius: Radius.card, backgroundColor: palette.lightGreen, flexDirection: 'row', alignItems: 'center', gap: 10 },
   syncConsentCopy: { flex: 1, color: muted, fontSize: 11, lineHeight: 16 },
   footerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, elevation: 20 },
   footer: { paddingHorizontal: 24, paddingTop: 12 },
@@ -1147,13 +1167,13 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   primaryButtonContent: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   primaryButtonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   optionList: { gap: LayoutSpacing.control, marginTop: LayoutSpacing.sectionLarge },
-  styleOption: { minHeight: 75, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(26.4), paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', backgroundColor: palette.surface, gap: 13 },
+  styleOption: { minHeight: 75, borderWidth: 1, borderColor: line, borderRadius: Radius.cardLarge, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', backgroundColor: palette.surface, gap: 13 },
   styleOptionSelected: { borderColor: palette.controlBorder, backgroundColor: palette.lightGreen },
   visualOptions: { gap: LayoutSpacing.related, marginTop: LayoutSpacing.section },
-  visualCard: { minHeight: 216, borderWidth: 1, borderColor: line, borderRadius: platformCardRadius(17.6), padding: 12, backgroundColor: palette.surface },
+  visualCard: { minHeight: 216, borderWidth: 1, borderColor: line, borderRadius: Radius.card, padding: 12, backgroundColor: palette.surface },
   visualCardSelected: { borderColor: palette.controlBorder, backgroundColor: palette.lightGreen },
-  previewFormal: { minHeight: 126, backgroundColor: palette.lightGreen, borderRadius: platformCardRadius(17.6), padding: 14, justifyContent: 'space-between' },
-  previewExpressive: { minHeight: 126, backgroundColor: palette.lightGreen, borderRadius: platformCardRadius(26.4), padding: 14, justifyContent: 'space-between' },
+  previewFormal: { minHeight: 126, backgroundColor: palette.lightGreen, borderRadius: Radius.card, padding: 14, justifyContent: 'space-between' },
+  previewExpressive: { minHeight: 126, backgroundColor: palette.lightGreen, borderRadius: Radius.cardLarge, padding: 14, justifyContent: 'space-between' },
   previewFormalHeading: { fontFamily: 'Satoshi', color: ink, fontWeight: '700', fontSize: 19.8 },
   previewFormalBody: { fontFamily: 'Satoshi', color: muted, fontSize: 11, letterSpacing: 1, fontWeight: '500' },
   previewExpressiveHeading: { fontFamily: 'DeliciousHandrawn-Regular', color: ink, fontSize: 27.5 },
@@ -1163,12 +1183,12 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   visualTitleWrap: { gap: 3 }, visualTitle: { fontFamily: 'Satoshi', fontWeight: '700', color: ink, fontSize: 16.5 },
   visualSubtitle: { fontFamily: 'Satoshi', color: muted, fontSize: 13.2, fontWeight: '400' },
   fontPair: { fontFamily: 'Satoshi', color: palette.muted, fontSize: 11, marginTop: 9 },
-  radioOuter: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: palette.line, alignItems: 'center', justifyContent: 'center' },
+  radioOuter: { width: 20, height: 20, borderRadius: Radius.pill, borderWidth: 1, borderColor: palette.line, alignItems: 'center', justifyContent: 'center' },
   styleIcon: { width: 28, alignItems: 'center', justifyContent: 'center' },
   styleCopy: { flex: 1 }, styleTitle: { fontFamily: 'DeliciousHandrawn-Regular', color: ink, fontSize: 12.1, fontWeight: '400' }, styleDetail: { color: muted, fontSize: 12.1, marginTop: 4, fontWeight: '400' },
-  radio: { width: 19, height: 19, borderRadius: 10, borderWidth: 1, borderColor: palette.line, alignItems: 'center', justifyContent: 'center' },
+  radio: { width: 19, height: 19, borderRadius: Radius.pill, borderWidth: 1, borderColor: palette.line, alignItems: 'center', justifyContent: 'center' },
   radioSelected: { borderColor: green }, radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: green },
-  reminderCard: { flexDirection: 'row', alignItems: 'center', marginTop: 21, paddingVertical: 15, paddingHorizontal: 14, backgroundColor: palette.lightGreen, borderRadius: platformCardRadius(17.6), gap: 12 },
+  reminderCard: { flexDirection: 'row', alignItems: 'center', marginTop: 21, paddingVertical: 15, paddingHorizontal: 14, backgroundColor: palette.lightGreen, borderRadius: Radius.card, gap: 12 },
   reminderIconWrap: { width: 42, height: 42, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   reminderCopy: { flex: 1 }, reminderTitle: { fontFamily: 'DeliciousHandrawn-Regular', fontSize: 12.1, color: ink, fontWeight: '400' }, reminderDetail: { fontSize: 11, color: muted, marginTop: 4, fontWeight: '400' },
   optional: { color: palette.muted, fontSize: 11, textAlign: 'center', marginTop: 12, fontWeight: '400' },
@@ -1181,9 +1201,9 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   orbitDotTwo: { position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: palette.muted, bottom: 32, left: 49 },
   doneTitle: { fontFamily: 'DeliciousHandrawn-Regular', fontSize: 27.5, lineHeight: 30.8, letterSpacing: 0, color: ink, textAlign: 'center' },
   doneBody: { marginTop: 12, color: muted, fontSize: 14.3, lineHeight: 22, textAlign: 'center', maxWidth: 310, fontWeight: '400' },
-  summaryCard: { width: '100%', padding: 16, borderRadius: platformCardRadius(17.6), backgroundColor: palette.lightGreen, marginTop: 22 },
+  summaryCard: { width: '100%', padding: 16, borderRadius: Radius.card, backgroundColor: palette.lightGreen, marginTop: 22 },
   summaryLabel: { color: palette.muted, fontSize: 9.9, letterSpacing: 1.5, fontWeight: '500', marginBottom: 12 },
-  summaryAreas: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, summaryChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: palette.surface, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 7 },
+  summaryAreas: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, summaryChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: palette.surface, borderRadius: Radius.small, paddingHorizontal: 9, paddingVertical: 7 },
   summaryChipText: { fontSize: 11, color: palette.ink }, moreAreas: { alignSelf: 'center', fontSize: 11, color: muted },
   summaryPlanList: { gap: 5, marginTop: 14 },
   summaryPlanLabel: { color: palette.muted, fontSize: 9.9, letterSpacing: 1.2, fontWeight: '500', marginBottom: 3 },

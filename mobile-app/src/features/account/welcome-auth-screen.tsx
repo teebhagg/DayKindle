@@ -1,10 +1,11 @@
 import { SquircleSurface } from '@/components/squircle-surface';
+import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, type AppTheme } from '@/constants/theme';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
 import { useContext, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppleAuthButton from './apple-auth-button';
 import { authProviderLabelTypography } from './auth-provider-typography';
@@ -118,7 +119,7 @@ export function WelcomeAuthScreen({
       <SquircleSurface style={[styles.gradientPanel, { height: panelHeight }]}>
         {effect ? <Canvas style={StyleSheet.absoluteFill}><Fill><Shader source={effect} uniforms={uniforms} /></Fill></Canvas> : null}
       </SquircleSurface>
-      <SquircleSurface style={styles.sheet}>
+      <SquircleCard style={styles.sheet}>
         <ScrollView
           contentContainerStyle={[styles.sheetContent, {
             paddingTop: Math.max(0, insets.top - insets.bottom * 0.2),
@@ -132,7 +133,7 @@ export function WelcomeAuthScreen({
 
           <View style={styles.actions}>
             <AppleAuthButton onPress={onApple} disabled={busy || !accountConfigured} />
-            <Pressable
+            <SquirclePressable
               onPress={onGoogle}
               disabled={busy || !accountConfigured}
               style={({ pressed }) => [styles.action, styles.actionSecondary, pressed && !busy && accountConfigured && styles.actionSecondaryPressed, (!accountConfigured || busy) && styles.actionDisabled]}
@@ -140,8 +141,8 @@ export function WelcomeAuthScreen({
               accessibilityLabel="Continue with Google"
             >
               <View style={styles.actionInner}><GoogleGlyph /><Text style={[styles.actionLabelSecondary, authProviderLabelTypography(visualStyle), textStyleForVisualStyle(visualStyle)]}>{busy ? 'Connecting…' : 'Continue with Google'}</Text></View>
-            </Pressable>
-            <Pressable
+            </SquirclePressable>
+            <SquirclePressable
               onPress={onGuest}
               disabled={busy}
               style={({ pressed }) => [styles.action, styles.actionSecondary, pressed && !busy && styles.actionSecondaryPressed, busy && styles.actionDisabled]}
@@ -152,13 +153,13 @@ export function WelcomeAuthScreen({
                 <AppIcon name="profile" size={18} color={palette.ink} />
                 <Text style={[styles.actionLabelSecondary, authProviderLabelTypography(visualStyle), textStyleForVisualStyle(visualStyle)]}>{busy ? 'Please wait…' : 'Continue as Guest'}</Text>
               </View>
-            </Pressable>
+            </SquirclePressable>
           </View>
 
           {!accountConfigured ? <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest mode is ready. Account sign-in is not configured on this build.</Text> : <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest plans stay on this device. Sync is your choice.</Text>}
         </ScrollView>
-      </SquircleSurface>
-      <Pressable
+      </SquircleCard>
+      <SquirclePressable
         onPress={onSkip}
         disabled={busy || skipBusy}
         style={({ pressed }) => [styles.skipButton, pressed && !busy && !skipBusy && styles.skipPressed, (busy || skipBusy) && styles.actionDisabled, { top: insets.top + 10 }]}
@@ -167,7 +168,7 @@ export function WelcomeAuthScreen({
       >
         <Text style={[styles.skipText, textStyleForVisualStyle(visualStyle)]}>{skipBusy ? 'Starting' : 'Use Guest'}</Text>
         <AppIcon name="arrow" size={16} color={palette.ink} />
-      </Pressable>
+      </SquirclePressable>
     </View>
   );
 }
@@ -180,7 +181,7 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   title: { color: palette.ink, fontFamily: 'Satoshi', fontSize: 20, fontWeight: '700', lineHeight: 26, letterSpacing: -0.45, textAlign: 'center' },
   subtitle: { marginTop: 7, color: palette.muted, fontFamily: 'Satoshi', fontSize: 15.5, fontWeight: '400', lineHeight: 21, letterSpacing: -0.2, textAlign: 'center' },
   actions: { width: '100%', gap: LayoutSpacing.related, marginTop: LayoutSpacing.section },
-  action: { width: '100%', height: 56, borderRadius: 28, overflow: 'hidden' },
+  action: { width: '100%', height: 56, borderRadius: Radius.pill, overflow: 'hidden' },
   actionInner: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 18 },
   actionSecondary: { backgroundColor: palette.lightGreen },
   actionSecondaryPressed: { backgroundColor: palette.lightGreen },

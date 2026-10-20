@@ -65,7 +65,7 @@ function ToastItem({
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
     >
-      <SquircleCard radiusRatio={0.5} exactSquircle pointerEvents="none" style={[StyleSheet.absoluteFill, styles.toastSurface, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+      <SquircleCard exactSquircle pointerEvents="none" style={[StyleSheet.absoluteFill, styles.toastSurface, { backgroundColor: colors.surface, borderColor: colors.border }]} />
       <View style={[styles.icon, { backgroundColor: variant.tint }]} accessible={false}>
           <Text style={[styles.iconText, { color: variant.accent }, textStyle]}>{variant.glyph}</Text>
       </View>
@@ -88,7 +88,7 @@ function ToastItem({
             toast.action?.onPress();
             onDismiss(toast.id);
           }}
-          style={styles.action}
+          style={[styles.action, { backgroundColor: variant.tint }]}
         >
           <Text style={[styles.actionText, { color: variant.accent }, textStyle]}>{toast.action.label}</Text>
         </Pressable>
@@ -98,7 +98,7 @@ function ToastItem({
         accessibilityLabel="Dismiss notification"
         hitSlop={8}
         onPress={() => onDismiss(toast.id)}
-        style={styles.close}
+        style={[styles.close, { backgroundColor: variant.tint }]}
       >
         <Text style={[styles.closeText, { color: colors.close }, textStyle]}>×</Text>
       </Pressable>

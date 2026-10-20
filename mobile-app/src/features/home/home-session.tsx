@@ -1,5 +1,6 @@
 import { LocalSaveConfirmations, confirmSavedWrite } from './local-save-confirmation';
 import { useTheme } from '@/hooks/use-theme';
+import { Radius } from '@/constants/theme';
 import { Pressable, Text, View } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import type { DaySchedule } from './day-schedules';
@@ -424,10 +425,10 @@ export function HomeSessionProvider({ children }: { children: ReactNode }) {
           <View style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: palette.paper }}>
             <Text style={[{ color: palette.ink, fontSize: session.visualStyle === 'expressive' ? 27.5 * 0.9 : 27.5, lineHeight: session.visualStyle === 'expressive' ? 35.2 * 0.9 : 35.2, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Your saved data needs attention.</Text>
             <Text style={[{ color: palette.muted, fontSize: session.visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4, lineHeight: session.visualStyle === 'expressive' ? 24.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 24.2, marginTop: 12 }, textStyleForVisualStyle(session.visualStyle)]}>Could not read your saved planner. Your saved copy is untouched. Try loading it again, or start fresh.</Text>
-            <Pressable onPress={retryLoad} style={{ minHeight: 52, borderRadius: 28, backgroundColor: palette.green, alignItems: "center", justifyContent: "center", marginTop: 20 }}>
+            <Pressable onPress={retryLoad} style={{ minHeight: 52, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.green, alignItems: "center", justifyContent: "center", marginTop: 20 }}>
               <Text style={[{ color: palette.onAccent, fontSize: session.visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Try reading saved data again</Text>
             </Pressable>
-            <Pressable onPress={() => void startFreshGuestData()} style={{ minHeight: 48, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 8, marginTop: 8 }}>
+            <Pressable onPress={() => void startFreshGuestData()} style={{ minHeight: 48, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 14, marginTop: 8 }}>
               <Text style={[{ color: palette.green, fontSize: session.visualStyle === 'expressive' ? 14.3 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 14.3, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Start fresh on this device</Text>
             </Pressable>
           </View>

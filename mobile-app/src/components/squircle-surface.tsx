@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
 import { MaskedView } from '@expo/ui/community/masked-view';
 import { Platform, StyleSheet, View, type LayoutChangeEvent, type ViewProps, type ViewStyle } from 'react-native';
+import { Radius } from '../constants/theme';
 
 type SquircleSurfaceProps = ViewProps & { radius?: number; color?: string; borderColor?: string; borderWidth?: number; exactSquircle?: boolean };
-export const CARD_SQUIRCLE_RADIUS_RATIO = 0.1;
+export const CARD_SQUIRCLE_RADIUS_RATIO = 0.14;
 
 export function squircleRadiusForSize(width: number, height: number) {
   return Math.min(width, height) * CARD_SQUIRCLE_RADIUS_RATIO;
@@ -40,7 +41,7 @@ function createSquirclePath(width: number, height: number, radius: number) {
 export function SquircleSurface({ children, style, radius, color, borderColor, borderWidth, exactSquircle = false, onLayout, ...viewProps }: SquircleSurfaceProps) {
   const flattenedStyle = StyleSheet.flatten(style) ?? {};
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const fallbackRadius = typeof flattenedStyle.borderRadius === 'number' ? flattenedStyle.borderRadius : 22;
+  const fallbackRadius = typeof flattenedStyle.borderRadius === 'number' ? flattenedStyle.borderRadius : Radius.card;
   const cornerRadius = radius ?? (size.width > 0 && size.height > 0 ? squircleRadiusForSize(size.width, size.height) : fallbackRadius);
   const fill = color ?? flattenedStyle.backgroundColor;
   const stroke = borderColor ?? flattenedStyle.borderColor;
@@ -64,7 +65,18 @@ export function SquircleSurface({ children, style, radius, color, borderColor, b
     return <View {...viewProps} onLayout={handleLayout} style={[styles.root, nativeStyle]}>{children}</View>;
   }
 
-  const surfaceStyle: ViewStyle = { ...flattenedStyle, backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 };
+  // Keep a native rounded fill behind the Skia path. Android lays out the
+  // MaskedView/Canvas asynchronously; without this fallback a card can briefly
+  // show its foreground text on the paper background before the squircle is
+  // painted. A circular corner is fully contained by the superellipse path,
+  // so the fallback never bleeds outside the finished squircle.
+  const surfaceStyle: ViewStyle = {
+    ...flattenedStyle,
+    backgroundColor: fill ?? 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: cornerRadius,
+  };
   // Skia's iOS Metal layer truncates fractional point dimensions; leave transparent room beyond the exact path bounds.
   const canvasStyle: ViewStyle = { position: 'absolute', top: 0, left: 0, width: Math.ceil(size.width), height: Math.ceil(size.height) };
 

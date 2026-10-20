@@ -4,11 +4,11 @@ import { StyleSheet, type ColorValue } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import type { ProgressiveBlurEdge, ProgressiveEdgeBlurProps } from './progressive-edge-blur';
-import { DEFAULT_TOP_HEADER_GRADIENT_HEIGHT, scaleHeaderGradientHeight } from './header-gradient-metrics';
+import { DEFAULT_TOP_HEADER_GRADIENT_HEIGHT } from './header-gradient-metrics';
 
 const edgeStyles = StyleSheet.create({
-  top: { position: 'absolute', top: 0, left: 0, right: 0, height: scaleHeaderGradientHeight(DEFAULT_TOP_HEADER_GRADIENT_HEIGHT) },
-  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 88 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, height: DEFAULT_TOP_HEADER_GRADIENT_HEIGHT },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 40 },
   left: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 24 },
   right: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 24 },
 });
@@ -41,8 +41,7 @@ export function ProgressiveEdgeBlur({ edge, surfaceColor, style }: ProgressiveEd
     >
       <Defs>
         <LinearGradient id={gradientId} {...direction}>
-          <Stop offset="0%" stopColor={fill} stopOpacity={0.7} />
-          <Stop offset="100%" stopColor={fill} stopOpacity={0} />
+          {[1, 0.985, 0.955, 0.91, 0.84, 0.73, 0.57, 0.33, 0].map((opacity, index) => <Stop key={index} offset={`${index * 12.5}%`} stopColor={fill} stopOpacity={opacity} />)}
         </LinearGradient>
       </Defs>
       <Rect x="0" y="0" width="100" height="100" fill={`url(#${gradientId})`} />

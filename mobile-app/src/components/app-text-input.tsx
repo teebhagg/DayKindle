@@ -1,6 +1,6 @@
 import { forwardRef, useContext } from 'react';
 import { StyleSheet, Text, TextInput, View, useWindowDimensions, type TextInputProps } from 'react-native';
-import { colorWithOpacity } from '@/constants/theme';
+import { colorWithOpacity, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle, VisualStyleContext } from '../features/home/visual-style-context';
 
@@ -26,8 +26,8 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(function Ap
     backgroundColor: borderless ? 'transparent' : theme.surface,
     borderColor: borderless ? 'transparent' : error ? theme.error : theme.line,
     borderWidth: borderless ? 0 : 1,
-    borderRadius: borderless ? 0 : 17,
-    ...(borderless ? {} : { borderCurve: 'continuous' as const }),
+    borderRadius: borderless ? 0 : Radius.control,
+    ...(borderless ? {} : { borderCurve: 'circular' as const }),
   };
   const input = <View style={fieldStyle}>
     <TextInput {...props} ref={ref} placeholderTextColor={colorWithOpacity(theme.ink, 0.5)} selectionColor={theme.green}

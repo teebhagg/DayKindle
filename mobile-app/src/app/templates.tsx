@@ -1,16 +1,15 @@
-import { SquircleSurface } from '@/components/squircle-surface';
-import { SquirclePressable } from '@/components/squircle-card';
+import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
 import { AppTextInput as TextInput } from '@/components/app-text-input';
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, platformCardRadius, type AppTheme } from '@/constants/theme';
-import { useId, useMemo, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
+import { useCallback, useId, useMemo, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View, useWindowDimensions, type ListRenderItem } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Link, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { BottomSheet, BottomSheetScrollView, BottomSheetView } from '@expo/ui/community/bottom-sheet';
 import { AppIcon } from '../components/app-icon';
 import { PageText } from '../features/home/page-text';
@@ -22,7 +21,7 @@ import { allGoalAndHabitTemplates, categoryIcons, scheduleTemplates, templateCat
 import { createOccurrenceId } from '../features/home/occurrences';
 import NativeActionButton from '../components/native-action-button';
 import { ProgressiveEdgeBlur } from '../components/progressive-edge-blur';
-import { APP_STANDARD_HEADER_HEIGHT, scaleHeaderBlurIntensity, scaleHeaderGradientHeight } from '../components/header-gradient-metrics';
+import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, topHeaderBlurHeight } from '../components/header-gradient-metrics';
 import { ProgressiveHorizontalScrollView } from '../components/progressive-horizontal-scroll-view';
 
 const categories = ['All', ...templateCategories];
@@ -42,13 +41,36 @@ export default function TemplatesScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const categorySurfaceGradientId = `category-filter-${useId().replace(/:/g, '')}`;
-  const headerHeight = insets.top + APP_STANDARD_HEADER_HEIGHT;
+  const headerHeight = insets.top + APP_NON_TAB_HEADER_HEIGHT;
+  const headerFadeHeight = insets.top + APP_HEADER_FADE_CONTENT_HEIGHT;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({ onScroll: (event) => { scrollY.value = event.contentOffset.y; } });
   const filteredTemplates = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return allGoalAndHabitTemplates.filter((item) => (activeCategory === 'All' || item.category === activeCategory)
       && (activeKind === 'all' || item.kind === activeKind)
       && (!normalized || [item.title, item.description, item.context, item.category, item.kind].join(' ').toLowerCase().includes(normalized)));
   }, [activeCategory, activeKind, query]);
+  const renderTemplateItem = useCallback<ListRenderItem<(typeof allGoalAndHabitTemplates)[number]>>(({ item }) => (
+    <View style={styles.templateGridColumn}>
+      <Link href={{ pathname: '/template-detail', params: { id: item.id } }} asChild>
+        <SquirclePressable nativeShape onPress={() => Keyboard.dismiss()} style={({ pressed }) => [styles.templateCard, pressed && styles.templateCardPressed]} accessibilityRole="button" accessibilityLabel={`Open ${item.title}`}>
+          <View style={styles.zoomCardContent}>
+            <Link.AppleZoom><View collapsable={false} style={styles.cardArt}>
+              <AppIcon name={categoryIcons[item.category]} style={visualStyle} size={28} color={green} />
+              <PageText style={styles.cardCategory}>{item.category.toUpperCase()}</PageText>
+            </View></Link.AppleZoom>
+            <View style={styles.gridCardCopy}>
+              <PageText style={styles.resultLabel}>{item.kind.toUpperCase()}</PageText>
+              <PageText display style={styles.cardTitle}>{item.title}</PageText>
+              <PageText style={styles.gridCardDescription}>{item.description}</PageText>
+              <View style={styles.gridCardAction}><PageText style={styles.gridCardActionText}>View template</PageText><AppIcon name="arrow" style={visualStyle} size={15} color={green} /></View>
+            </View>
+          </View>
+        </SquirclePressable>
+      </Link>
+    </View>
+  ), [green, styles, visualStyle]);
   const editSchedule = (schedule: DaySchedule) => {
     Keyboard.dismiss();
     setSchedulePreview(null);
@@ -100,15 +122,21 @@ export default function TemplatesScreen() {
         <Animated.FlatList
           data={filteredTemplates}
           keyExtractor={(item) => item.id}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          updateCellsBatchingPeriod={32}
+          windowSize={9}
           contentContainerStyle={[styles.listContent, { minHeight: Math.max(0, windowHeight - headerHeight), paddingTop: headerHeight + 174, paddingBottom: insets.bottom + 28 }]}
           ListHeaderComponent={<View>
             <View style={styles.scheduleTemplateHeading}><View style={{ flex: 1 }}><PageText style={styles.eyebrow}>DAILY ROUTINES</PageText><PageText display style={styles.heading}>Plan a daily routine.</PageText><PageText style={styles.intro}>Choose a starting plan, then edit it.</PageText></View><NativeActionButton label="See more" systemImage="arrow.right" appearance="plain" tintColor={green} labelColor={green} onPress={() => router.push('/full-day-templates')} style={styles.seeMoreButton} accessibilityLabel="See more full-day templates"><PageText style={styles.seeMoreText}>See more</PageText><AppIcon name="arrow" style={visualStyle} size={15} color={green} /></NativeActionButton></View>
             <ProgressiveHorizontalScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scheduleTemplateList}>{scheduleTemplates.slice(0, 4).map((schedule) => {
               const appliedSchedule = daySchedules.find((item) => item.sourceTemplateId === schedule.id || item.id === schedule.id);
               const preview = appliedSchedule ? { ...schedule, ...appliedSchedule, audience: schedule.audience, description: schedule.description } : schedule;
-              return <SquirclePressable key={schedule.id} onPress={() => setSchedulePreview({ ...preview, blocks: preview.blocks.map((block) => ({ ...block })) })} style={styles.scheduleTemplateCard} accessibilityRole="button" accessibilityLabel={`Preview ${preview.title}`}>
+              return <SquirclePressable nativeShape key={schedule.id} onPress={() => setSchedulePreview({ ...preview, blocks: preview.blocks.map((block) => ({ ...block })) })} style={styles.scheduleTemplateCard} accessibilityRole="button" accessibilityLabel={`Preview ${preview.title}`}>
                 <View style={styles.cardTop}><View style={styles.cardIcon}><AppIcon name={schedule.dayType === 'weekday' ? 'clock' : 'sun'} style={visualStyle} size={20} color={green} /></View><PageText style={styles.cardCategory}>{schedule.audience.toUpperCase()}</PageText></View>
                 <PageText display style={styles.cardTitle}>{preview.title}</PageText>
                 <PageText style={styles.cardDescription}>{schedule.description}</PageText>
@@ -122,38 +150,26 @@ export default function TemplatesScreen() {
           </View>}
           numColumns={2}
           columnWrapperStyle={styles.templateGridRow}
-          renderItem={({ item }) => <Link href={{ pathname: '/template-detail', params: { id: item.id } }} asChild><SquirclePressable onPress={() => Keyboard.dismiss()} style={styles.templateCard} accessibilityRole="button" accessibilityLabel={`Open ${item.title}`}>
-              <SquircleSurface style={styles.zoomCardContent}>
-                <Link.AppleZoom><View collapsable={false} style={StyleSheet.flatten([styles.cardArt, item.category === 'Sleep & Recovery' && styles.cardArtRest, item.category === 'Productivity' && styles.cardArtFocus, item.category === 'Finance' && styles.cardArtMoney])}>
-                  <AppIcon name={categoryIcons[item.category]} style={visualStyle} size={28} color={green} />
-                  <PageText style={styles.cardCategory}>{item.category.toUpperCase()}</PageText>
-                </View></Link.AppleZoom>
-                <View style={styles.gridCardCopy}>
-                  <PageText style={styles.resultLabel}>{item.kind.toUpperCase()}</PageText>
-                  <PageText display style={styles.cardTitle}>{item.title}</PageText>
-                  <PageText style={styles.gridCardDescription}>{item.description}</PageText>
-                  <View style={styles.gridCardAction}><PageText style={styles.gridCardActionText}>View template</PageText><AppIcon name="arrow" style={visualStyle} size={15} color={green} /></View>
-                </View>
-              </SquircleSurface>
-          </SquirclePressable></Link>}
-          ListEmptyComponent={<SquircleSurface style={styles.emptyState}><AppIcon name="search" style={visualStyle} size={25} color={green} /><PageText display style={styles.emptyTitle}>No matches yet.</PageText><PageText style={styles.emptyCopy}>Try another word or category.</PageText></SquircleSurface>}
+          renderItem={renderTemplateItem}
+          ListEmptyComponent={<SquircleCard style={styles.emptyState}><AppIcon name="search" style={visualStyle} size={25} color={green} /><PageText display style={styles.emptyTitle}>No matches yet.</PageText><PageText style={styles.emptyCopy}>Try another word or category.</PageText></SquircleCard>}
         />
-        <ProgressiveEdgeBlur edge="top" surfaceColor={paper} intensity={scaleHeaderBlurIntensity(75)} style={{ height: scaleHeaderGradientHeight(headerHeight), zIndex: 9, opacity: 0.95 }} />
-        <View pointerEvents="box-none" style={[styles.headerOverlay, { height: headerHeight }]}>
-          <View style={[styles.topBar, { marginTop: insets.top }]}> 
+        <ProgressiveEdgeBlur edge="bottom" surfaceColor={paper} style={{ zIndex: 8 }} />
+        <ProgressiveEdgeBlur edge="top" surfaceColor={paper} startOffset={0.8} scrollProgress={scrollY} revealDistance={headerFadeHeight} style={{ height: topHeaderBlurHeight(headerFadeHeight), zIndex: 9, opacity: 0.95 }} />
+        <View pointerEvents="box-none" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
+          <View style={[styles.topBar, { marginTop: insets.top }]}>
             <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" appearance="plain" tintColor={ink} labelColor={ink} onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
               <View style={styles.backIcon}><AppIcon name="arrow" style={visualStyle} size={18} color={ink} /></View><PageText style={styles.backLabel}>Back</PageText>
             </NativeActionButton>
             <View style={styles.topBarBalance} />
           </View>
-          <View pointerEvents="none" style={[styles.templateHeaderCollapsed, { top: insets.top, height: APP_STANDARD_HEADER_HEIGHT }]}><PageText preserveDisplaySize style={styles.collapsedTitle}>Templates</PageText></View>
+          <View pointerEvents="none" style={[styles.templateHeaderCollapsed, { top: insets.top, height: APP_NON_TAB_HEADER_HEIGHT }]}><PageText style={styles.collapsedTitle}>Templates</PageText></View>
         </View>
         <View style={[styles.stickyFilters, { top: headerHeight }]}>
           <View style={styles.stickyFiltersInner}>
-            <SquircleSurface radius={17} style={styles.searchField}>
+            <View style={styles.searchField}>
               <AppIcon name="search" style={visualStyle} size={19} color={muted} />
               <TextInput borderless hideLabel value={query} onChangeText={setQuery} multiline={false} numberOfLines={1} placeholder="Search goals and habits" placeholderTextColor={palette.muted} selectionColor={green} style={styles.searchInput} returnKeyType="search" clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : 'never'} accessibilityLabel="Search templates" />
-            </SquircleSurface>
+            </View>
             <View style={styles.categoryFilterSurface}>
               <Svg pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
                 <Defs>
@@ -170,13 +186,13 @@ export default function TemplatesScreen() {
                 {(['all', 'goal', 'habit'] as const).map((kind) => {
                   const selected = activeKind === kind;
                   const label = kind === 'all' ? 'All types' : `${kind[0].toUpperCase()}${kind.slice(1)}s`;
-                  return <Pressable key={kind} onPress={() => setActiveKind(kind)} style={[styles.categoryPill, selected && styles.categoryPillSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</PageText></Pressable>;
+                  return <SquirclePressable pill key={kind} onPress={() => setActiveKind(kind)} style={[styles.categoryPill, selected && styles.categoryPillSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</PageText></SquirclePressable>;
                 })}
               </View>
               <ProgressiveHorizontalScrollView viewportStyle={styles.categoryScrollWrap} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories} keyboardShouldPersistTaps="handled">
                 {categories.map((category) => {
                   const selected = category === activeCategory;
-                  return <Pressable key={category} onPress={() => setActiveCategory(category)} style={[styles.categoryPill, selected && styles.categoryPillSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.categoryText, selected && styles.categoryTextSelected]}>{category}</PageText></Pressable>;
+                  return <SquirclePressable pill key={category} onPress={() => setActiveCategory(category)} style={[styles.categoryPill, selected && styles.categoryPillSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.categoryText, selected && styles.categoryTextSelected]}>{category}</PageText></SquirclePressable>;
                 })}
               </ProgressiveHorizontalScrollView>
             </View>
@@ -229,12 +245,12 @@ export default function TemplatesScreen() {
 }
 const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper } = palette; return StyleSheet.create({
   root: { flex: 1, backgroundColor: paper },
-  headerOverlay: { position: 'absolute', zIndex: 10, top: 0, left: 0, right: 0, overflow: 'hidden' },
+  headerOverlay: { position: 'absolute', zIndex: 20, top: 0, left: 0, right: 0, overflow: 'hidden' },
   stickyFilters: { position: 'absolute', zIndex: 9, left: 0, right: 0, paddingTop: 4, paddingBottom: 2 },
   stickyFiltersInner: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: LayoutSpacing.screenInset },
-  topBar: { height: APP_STANDARD_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  templateHeaderCollapsed: { position: 'absolute', left: 108, right: 108, alignItems: 'center', justifyContent: 'center' },
-  collapsedTitle: { color: ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600' },
+  topBar: { height: APP_NON_TAB_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  templateHeaderCollapsed: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 88, alignItems: 'center', justifyContent: 'center' },
+  collapsedTitle: { width: '100%', color: ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600', textAlign: 'center' },
   backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
   backIcon: { transform: [{ scaleX: -1 }] },
   backLabel: { color: ink, fontSize: 13.2, fontWeight: '600' },
@@ -243,7 +259,7 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   eyebrow: { color: green, fontFamily: 'Satoshi', fontSize: 11, fontWeight: '700', letterSpacing: 1.3, marginTop: 17 },
   heading: { color: ink, fontSize: 30.8 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 39.6 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '500', marginTop: 8 },
   intro: { color: muted, fontSize: 14.3, lineHeight: 22, fontWeight: '400', marginTop: 4, marginBottom: LayoutSpacing.group },
-  searchField: { height: 48, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchField: { height: 48, paddingHorizontal: 14, borderRadius: Radius.control, borderCurve: 'circular', borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchInput: { flex: 1, minHeight: 46, paddingVertical: 0, color: ink, fontSize: 16, lineHeight: 21, includeFontPadding: false },
   categoryFilterSurface: { position: 'relative', overflow: 'hidden', marginHorizontal: -22, paddingHorizontal: 22 },
   kindFilters: { flexDirection: 'row', gap: 8, paddingTop: 9, paddingBottom: 2 },
@@ -258,23 +274,25 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   scheduleTemplateHeading: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
   seeMoreButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 10 },
   seeMoreText: { color: green, fontSize: 12.1, fontWeight: '600' },
-  scheduleTemplateCard: { width: 252, minHeight: 190, padding: 13, borderRadius: platformCardRadius(17.6), borderWidth: 1, borderColor: palette.line, backgroundColor: palette.lightGreen },
+  scheduleTemplateCard: { width: 252, minHeight: 190, padding: 13, borderRadius: Radius.card, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.lightGreen },
   horizontalCardAction: { minHeight: 34, marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   scheduleEditSheet: { flexGrow: 1, paddingHorizontal: LayoutSpacing.sheetInset, paddingTop: 4, backgroundColor: paper },
-  scheduleTitleInput: { minHeight: 50, paddingHorizontal: 15, borderRadius: 16, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, color: ink, fontSize: 22 },
+  scheduleTitleInput: { minHeight: 50, paddingHorizontal: 15, borderRadius: Radius.control, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, color: ink, fontSize: 22 },
   scheduleEditBlock: { paddingTop: LayoutSpacing.control, paddingBottom: LayoutSpacing.group, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.line, marginBottom: LayoutSpacing.control, gap: LayoutSpacing.control },
   scheduleEditBlockLast: { borderBottomWidth: 0 },
   scheduleEditBlockHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  scheduleTimeInput: { minHeight: 43, paddingHorizontal: 11, borderRadius: 12, backgroundColor: palette.lightGreen, color: muted, fontSize: 13.2 },
-  scheduleActivityInput: { minHeight: 46, paddingHorizontal: 11, borderRadius: 12, backgroundColor: palette.lightGreen, color: ink, fontSize: 16.5 },
-  scheduleDetailsInput: { minHeight: 86, paddingHorizontal: 11, paddingTop: 10, borderRadius: 12, backgroundColor: palette.lightGreen, color: muted, fontSize: 13.2, lineHeight: 20.9 },
+  scheduleTimeInput: { minHeight: 43, paddingHorizontal: 11, borderRadius: Radius.small, backgroundColor: palette.lightGreen, color: muted, fontSize: 13.2 },
+  scheduleActivityInput: { minHeight: 46, paddingHorizontal: 11, borderRadius: Radius.small, backgroundColor: palette.lightGreen, color: ink, fontSize: 16.5 },
+  scheduleDetailsInput: { minHeight: 86, paddingHorizontal: 11, paddingTop: 10, borderRadius: Radius.small, backgroundColor: palette.lightGreen, color: muted, fontSize: 13.2, lineHeight: 20.9 },
   removeBlockButton: { minHeight: 44, paddingHorizontal: 10, justifyContent: 'center' },
   removeBlockText: { color: palette.muted, fontSize: 12.1 },
   addBlockButton: { minHeight: 48, marginBottom: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: palette.line, flexDirection: 'row', alignItems: 'center', gap: 8 },
   addBlockText: { color: green, fontSize: 13.2, fontWeight: '600' },
-  templateGridRow: { gap: LayoutSpacing.related, marginBottom: LayoutSpacing.related },
-  templateCard: { flex: 1, minWidth: 0, overflow: 'hidden', borderRadius: platformCardRadius(17.6), borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface },
-  zoomCardContent: { flex: 1, overflow: 'hidden', borderRadius: platformCardRadius(17.6) },
+  templateGridRow: { marginBottom: LayoutSpacing.related },
+  templateGridColumn: { flexBasis: '50%', width: '50%', maxWidth: '50%', flexGrow: 0, flexShrink: 0, paddingRight: LayoutSpacing.related / 2 },
+  templateCard: { width: '100%', flexGrow: 0, flexShrink: 1, minWidth: 0, overflow: 'hidden', borderRadius: Radius.card, borderCurve: 'continuous', borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface },
+  templateCardPressed: { opacity: 0.9 },
+  zoomCardContent: { flex: 1, overflow: 'hidden', borderRadius: Radius.card },
   cardArt: { height: 116, padding: 13, alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: palette.lightGreen },
   cardArtRest: { backgroundColor: palette.lightGreen }, cardArtFocus: { backgroundColor: palette.lightGreen }, cardArtMoney: { backgroundColor: palette.lightGreen },
   gridCardCopy: { minHeight: 138, padding: 12, justifyContent: 'space-between' },
@@ -286,7 +304,7 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   cardCategory: { color: green, fontFamily: 'Satoshi', fontSize: 9.9, fontWeight: '700', letterSpacing: 1.2 },
   cardTitle: { color: ink, fontSize: 17.6, lineHeight: 23.1, fontWeight: '500' },
   cardDescription: { color: muted, fontSize: 13.2, lineHeight: 19.8, marginTop: 4 },
-  firstStep: { marginTop: 13, padding: 12, borderRadius: 18.7, backgroundColor: palette.lightGreen },
+  firstStep: { marginTop: 13, padding: 12, borderRadius: Radius.card, backgroundColor: palette.lightGreen },
   firstStepLabel: { color: green, fontFamily: 'Satoshi', fontSize: 8.8, fontWeight: '700', letterSpacing: 1.1 },
   firstStepText: { color: ink, fontSize: 12.1, lineHeight: 18.7, fontWeight: '500', marginTop: 4 },
   useButton: { minHeight: 46, marginTop: 13, paddingHorizontal: 15, borderRadius: 999, backgroundColor: palette.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -294,16 +312,16 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   useButtonText: { color: palette.onAccent, fontFamily: 'Satoshi', fontSize: 13.2, fontWeight: '600' },
   useButtonTextAdded: { color: green },
   previewTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  previewClose: { width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
+  previewClose: { width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: Radius.control, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
   previewCloseText: { color: muted, fontSize: 26.4, lineHeight: 30.8 },
   templatePreview: { paddingTop: LayoutSpacing.related, paddingHorizontal: LayoutSpacing.sheetInset, backgroundColor: paper },
-  previewIcon: { width: 48, height: 48, borderRadius: 17, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
+  previewIcon: { width: 48, height: 48, borderRadius: Radius.control, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
   previewCategory: { flex: 1, gap: 4 },
   previewEyebrow: { color: green, fontFamily: 'Satoshi', fontSize: 9.9, fontWeight: '700', letterSpacing: 1.2 },
   previewMeta: { color: muted, fontSize: 12.1, lineHeight: 16.5 },
   previewTitle: { color: ink, fontSize: 29.7, lineHeight: 36.3, fontWeight: '500', marginTop: 12 },
   previewDescription: { color: muted, fontSize: 15.4, lineHeight: 23.1, marginTop: 7 },
-  previewStepCard: { marginTop: 20, padding: 16, borderRadius: platformCardRadius(17.6), backgroundColor: palette.lightGreen },
+  previewStepCard: { marginTop: 20, padding: 16, borderRadius: Radius.card, backgroundColor: palette.lightGreen },
   previewStep: { color: ink, fontSize: 17.6, lineHeight: 25.3, fontWeight: '500', marginTop: 7 },
   schedulePreviewScroll: { flex: 1 },
   schedulePreviewContent: { paddingTop: LayoutSpacing.related, paddingHorizontal: LayoutSpacing.sheetInset },

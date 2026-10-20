@@ -1,12 +1,11 @@
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, type AppTheme } from '@/constants/theme';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CommunityBottomSheet, { BottomSheetScrollView, BottomSheetView } from '@expo/ui/community/bottom-sheet';
 import { AppTextInput } from '../../components/app-text-input';
 import { AppIcon } from '../../components/app-icon';
+import { SquircleCard, SquirclePressable } from '../../components/squircle-card';
 import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle } from './visual-style-context';
 import { useHomeSession, type DailyCheckIn, type HomeEntry } from './home-session';
 import { toast } from '../../components/toast';
@@ -151,7 +151,8 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
               <SheetText visualStyle={visualStyle} style={styles.title}>{formatDateHeading(date)}</SheetText>
               <SheetText visualStyle={visualStyle} style={styles.subtitle}>Add a note about your day.</SheetText>
             </View>
-            <Pressable
+            <SquirclePressable
+              pill
               onPress={onClose}
               style={styles.closeButton}
               accessibilityRole="button"
@@ -159,7 +160,7 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
               accessibilityHint="Closes the sheet. Use Save to keep any unsaved changes."
             >
               <AppIcon name="close" style={visualStyle} size={20} color={colors.ink} />
-            </Pressable>
+            </SquirclePressable>
           </View>
         </View>
         <BottomSheetScrollView
@@ -213,9 +214,10 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
 
           <View style={styles.checkInSection}>
             <SheetText visualStyle={visualStyle} style={styles.eyebrow}>REFLECT</SheetText>
-            <View style={styles.periodRow} accessibilityRole="radiogroup" accessibilityLabel="Choose morning or evening check-in">
+            <SquircleCard style={styles.periodRow} accessibilityRole="radiogroup" accessibilityLabel="Choose morning or evening check-in">
               {(['morning', 'evening'] as const).map((item) => (
-                <Pressable
+                <SquirclePressable
+                  pill
                   key={item}
                   onPress={() => setPeriod(item)}
                   style={[styles.periodButton, period === item && styles.periodButtonSelected]}
@@ -225,9 +227,9 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
                   <SheetText visualStyle={visualStyle} style={[styles.periodText, period === item && styles.periodTextSelected]}>
                     {item === 'morning' ? 'Morning' : 'Evening'}
                   </SheetText>
-                </Pressable>
+                </SquirclePressable>
               ))}
-            </View>
+            </SquircleCard>
 
             {period === 'morning' ? (
               <>
@@ -264,7 +266,8 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
               </>
             )}
 
-            <Pressable
+            <SquirclePressable
+            pill
               onPress={() => void saveCheckIn()} disabled={saving}
               style={styles.saveButton}
               accessibilityRole="button"
@@ -272,7 +275,7 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
             >
               <SheetText visualStyle={visualStyle} style={styles.saveButtonText}>{saveLabel}</SheetText>
               <AppIcon name="check" style={visualStyle} size={18} color={palette.paper} />
-            </Pressable>
+            </SquirclePressable>
           </View>
         </BottomSheetScrollView>
       </KeyboardAvoidingView></BottomSheetView>
@@ -297,7 +300,8 @@ function RatingPicker({
       <SheetText visualStyle={visualStyle} style={styles.fieldLabel}>{label}</SheetText>
       <View style={styles.ratingRow}>
         {[1, 2, 3, 4, 5].map((score) => (
-          <Pressable
+          <SquirclePressable
+            pill
             key={score}
             onPress={() => onChange(score)}
             style={[styles.ratingChoice, value === score && styles.ratingChoiceSelected]}
@@ -306,7 +310,7 @@ function RatingPicker({
             accessibilityLabel={`${label} ${score} of 5`}
           >
             <SheetText visualStyle={visualStyle} style={[styles.ratingText, value === score && styles.ratingTextSelected]}>{score}</SheetText>
-          </Pressable>
+          </SquirclePressable>
         ))}
       </View>
     </View>
@@ -340,7 +344,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette;  return St
   planGoal: { color: colors.green, fontSize: 10.5, lineHeight: 15 },
   emptyPlan: { color: colors.muted, fontSize: 12.5, lineHeight: 18, paddingTop: 2 },
   checkInSection: { gap: 10 },
-  periodRow: { flexDirection: 'row', gap: 8, padding: 4, borderRadius: 999, backgroundColor: palette.lightGreen },
+  periodRow: { flexDirection: 'row', gap: 8, padding: 4, borderRadius: Radius.control, backgroundColor: palette.lightGreen },
   periodButton: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
   periodButtonSelected: { backgroundColor: palette.green },
   periodText: { fontFamily: 'Satoshi', color: colors.muted, fontSize: 13, fontWeight: '600' },
@@ -348,11 +352,11 @@ const createStyles = (palette: AppTheme) => { const colors = palette;  return St
   ratingGroup: { gap: 6 },
   fieldLabel: { color: colors.green, fontSize: 12, fontWeight: '600' },
   ratingRow: { flexDirection: 'row', gap: 5 },
-  ratingChoice: { flex: 1, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: palette.lightGreen },
+  ratingChoice: { flex: 1, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen },
   ratingChoiceSelected: { backgroundColor: colors.green },
   ratingText: { fontFamily: 'Satoshi', fontSize: 13, fontWeight: '600' },
   ratingTextSelected: { color: palette.onAccent },
-  reflectionInput: { minHeight: 92, paddingHorizontal: 13, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: palette.line, backgroundColor: colors.surface, color: colors.ink, fontSize: 14, lineHeight: 20, textAlignVertical: 'top' },
+  reflectionInput: { minHeight: 92, paddingHorizontal: 13, paddingVertical: 12, borderRadius: Radius.control, borderWidth: 1, borderColor: palette.line, backgroundColor: colors.surface, color: colors.ink, fontSize: 14, lineHeight: 20, textAlignVertical: 'top' },
   saveButton: { minHeight: 54, paddingHorizontal: 18, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.ink },
   saveButtonText: { fontFamily: 'Satoshi', color: palette.paper, fontSize: 14, fontWeight: '600' },
 }); };

@@ -44,7 +44,25 @@ export type AppTheme = { [K in keyof typeof Colors.light]: string };
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const platformCardRadius = (radius: number) => radius * 1.15;
+export const Radius = {
+  small: 12,
+  control: 16,
+  card: 28,
+  cardLarge: 32,
+  hero: 36,
+  panel: 40,
+  pill: 999,
+} as const;
+
+const radiusScale = [8, Radius.small, Radius.control, Radius.card, Radius.cardLarge, Radius.hero, Radius.panel] as const;
+
+export function normalizeCornerRadius(radius: number) {
+  if (radius < 8 || radius >= Radius.pill) return radius;
+
+  return radiusScale.reduce((closest, candidate) =>
+    Math.abs(candidate - radius) <= Math.abs(closest - radius) ? candidate : closest,
+  radiusScale[0]);
+}
 
 export const colorWithOpacity = (color: string, opacity: number) => {
   if (/^#[\da-f]{6}$/i.test(color)) {

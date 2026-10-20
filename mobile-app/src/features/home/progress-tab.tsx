@@ -1,11 +1,10 @@
 import { memo, useContext, type Dispatch, type SetStateAction } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { Easing, LinearTransition, ZoomIn, ZoomOut, useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/hooks/use-theme';
 import { AppIcon } from '../../components/app-icon';
-import { SquirclePressable } from '../../components/squircle-card';
-import { SquircleSurface } from '../../components/squircle-surface';
+import { SquircleCard, SquirclePressable } from '../../components/squircle-card';
 import { PageText } from './page-text';
 import { dateKey } from './home-session';
 import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, VisualStyleContext } from './visual-style-context';
@@ -57,8 +56,7 @@ function ProgressTab({
     </View>
     <View style={styles.progressActionRow}>
       <SquirclePressable
-        radiusRatio={0.5}
-        exactSquircle
+exactSquircle
         onPress={onOpenCheckIn}
         style={({ pressed }) => [styles.checkInEntryButton, pressed && { backgroundColor: palette.pressed }]}
         accessibilityRole="button"
@@ -72,8 +70,7 @@ function ProgressTab({
       </SquirclePressable>
 
       <SquirclePressable
-        radiusRatio={0.5}
-        exactSquircle
+exactSquircle
         onPress={onOpenHistory}
         style={({ pressed }) => [styles.progressHistoryLink, pressed && { backgroundColor: palette.pressed }]}
         accessibilityRole="button"
@@ -88,13 +85,13 @@ function ProgressTab({
     </View>
 
     <View style={styles.progressRangeSection}>
-      <View style={styles.progressRangeRow} accessibilityRole="radiogroup" accessibilityLabel="Progress date range">{progressRanges.map((range) => <Pressable key={range.id} onPress={() => onProgressRangeChange(range.id)} style={[styles.progressRangeButton, progressRangeId === range.id && styles.progressRangeButtonSelected]} accessibilityRole="radio" accessibilityState={{ selected: progressRangeId === range.id }}><PageText style={[styles.progressRangeText, progressRangeId === range.id && styles.progressRangeTextSelected]}>{range.label}</PageText></Pressable>)}</View>
+      <View style={styles.progressRangeRow} accessibilityRole="radiogroup" accessibilityLabel="Progress date range">{progressRanges.map((range) => <SquirclePressable key={range.id} onPress={() => onProgressRangeChange(range.id)} style={[styles.progressRangeButton, progressRangeId === range.id && styles.progressRangeButtonSelected]} accessibilityRole="radio" accessibilityState={{ selected: progressRangeId === range.id }}><PageText style={[styles.progressRangeText, progressRangeId === range.id && styles.progressRangeTextSelected]}>{range.label}</PageText></SquirclePressable>)}</View>
       <PageText style={[styles.sectionSubtitle, styles.progressRangeHint]}>{model.progressStart} to {model.progressEnd}. Task completion includes routine actions. Habit consistency counts completed habits. Percentages use recorded actions; no records show —.</PageText>
     </View>
-    <SquircleSurface style={styles.progressCard}><View style={styles.chartHeading}><View><PageText display style={styles.sectionTitle}>Action completion</PageText><PageText style={styles.sectionSubtitle}>Completed task and routine actions by {model.progressRange.unit}</PageText></View><View style={styles.chartBadge}><AppIcon name="progress" style={visualStyle} size={14} /></View></View><Chart values={model.progressBuckets.map((bucket) => bucket.value)} labels={model.progressBuckets.map((bucket) => bucket.label)} expressive={expressive} width={chartWidth} /><PageText style={styles.chartNote}>{model.taskCompletionRate == null ? 'No recorded actions for this range yet.' : `${model.completedTaskCount} of ${model.taskEntryCount} recorded actions completed.`}</PageText></SquircleSurface>
+    <SquircleCard style={styles.progressCard}><View style={styles.chartHeading}><View><PageText display style={styles.sectionTitle}>Action completion</PageText><PageText style={styles.sectionSubtitle}>Completed task and routine actions by {model.progressRange.unit}</PageText></View><View style={styles.chartBadge}><AppIcon name="progress" style={visualStyle} size={14} /></View></View><Chart values={model.progressBuckets.map((bucket) => bucket.value)} labels={model.progressBuckets.map((bucket) => bucket.label)} expressive={expressive} width={chartWidth} /><PageText style={styles.chartNote}>{model.taskCompletionRate == null ? 'No recorded actions for this range yet.' : `${model.completedTaskCount} of ${model.taskEntryCount} recorded actions completed.`}</PageText></SquircleCard>
     <View style={styles.progressMetrics}>
-      <View style={styles.metricRow}><SquircleSurface style={styles.metricCard}><PageText style={styles.metricLabel}>TASK COMPLETION</PageText><PageText display style={styles.metricValue}>{model.taskCompletionRate == null ? '—' : `${model.taskCompletionRate}%`}</PageText><PageText style={styles.metricCaption}>{model.comparisonText(model.taskCompletionRate, model.priorTaskCompletionRate)}</PageText></SquircleSurface><SquircleSurface style={styles.metricCard}><PageText style={styles.metricLabel}>HABIT CONSISTENCY</PageText><PageText display style={styles.metricValue}>{model.habitConsistency == null ? '—' : `${model.habitConsistency}%`}</PageText><PageText style={styles.metricCaption}>{model.comparisonText(model.habitConsistency, model.priorHabitConsistency)}</PageText></SquircleSurface></View>
-      <View style={styles.metricRow}><SquircleSurface style={styles.metricCard}><PageText style={styles.metricLabel}>GOAL PROGRESS</PageText><PageText display style={styles.metricValue}>{model.planCount ? `${model.measurableGoalCount}` : '—'}</PageText><PageText style={styles.metricCaption}>{model.rangeGoalEventCount ? `${model.rangeGoalEventCount} progress updates in range` : 'measurable goals'}</PageText></SquircleSurface><SquircleSurface style={styles.metricCard}><PageText style={styles.metricLabel}>ROUTINE STEPS</PageText><PageText display style={styles.metricValue}>{model.routineEntryCount ? `${model.completedRoutineCount}/${model.routineEntryCount}` : '—'}</PageText><PageText style={styles.metricCaption}>recorded in range</PageText></SquircleSurface></View>
+      <View style={styles.metricRow}><SquircleCard style={styles.metricCard}><PageText style={styles.metricLabel}>TASK COMPLETION</PageText><PageText display style={styles.metricValue}>{model.taskCompletionRate == null ? '—' : `${model.taskCompletionRate}%`}</PageText><PageText style={styles.metricCaption}>{model.comparisonText(model.taskCompletionRate, model.priorTaskCompletionRate)}</PageText></SquircleCard><SquircleCard style={styles.metricCard}><PageText style={styles.metricLabel}>HABIT CONSISTENCY</PageText><PageText display style={styles.metricValue}>{model.habitConsistency == null ? '—' : `${model.habitConsistency}%`}</PageText><PageText style={styles.metricCaption}>{model.comparisonText(model.habitConsistency, model.priorHabitConsistency)}</PageText></SquircleCard></View>
+      <View style={styles.metricRow}><SquircleCard style={styles.metricCard}><PageText style={styles.metricLabel}>GOAL PROGRESS</PageText><PageText display style={styles.metricValue}>{model.planCount ? `${model.measurableGoalCount}` : '—'}</PageText><PageText style={styles.metricCaption}>{model.rangeGoalEventCount ? `${model.rangeGoalEventCount} progress updates in range` : 'measurable goals'}</PageText></SquircleCard><SquircleCard style={styles.metricCard}><PageText style={styles.metricLabel}>ROUTINE STEPS</PageText><PageText display style={styles.metricValue}>{model.routineEntryCount ? `${model.completedRoutineCount}/${model.routineEntryCount}` : '—'}</PageText><PageText style={styles.metricCaption}>recorded in range</PageText></SquircleCard></View>
     </View>
 
     <Animated.View layout={achievementLayout} style={styles.achievementsSection}>
@@ -120,7 +117,7 @@ function ProgressTab({
         <PageText style={styles.achievementState}>{achievement.isEarned ? 'Earned' : 'In progress'}</PageText>
       </Animated.View>)}
       {model.achievements.length > visibleAchievementCount && <Animated.View layout={achievementLayout}>
-        <Pressable
+        <SquirclePressable
           onPress={() => onShowAllAchievementsChange((expanded) => !expanded)}
           style={({ pressed }) => [styles.achievementToggle, pressed && styles.achievementTogglePressed]}
           accessibilityRole="button"
@@ -128,12 +125,12 @@ function ProgressTab({
           accessibilityState={{ expanded: showAllAchievements }}
         >
           <PageText style={styles.achievementToggleText}>{showAllAchievements ? 'See fewer achievements' : 'See more achievements'}</PageText>
-        </Pressable>
+        </SquirclePressable>
       </Animated.View>}
     </Animated.View>
 
     <Animated.View layout={achievementLayout}>
-      <SquirclePressable radiusRatio={0.5} exactSquircle onPress={onOpenReflection} style={({ pressed }) => [styles.habitPrompt, pressed && { backgroundColor: palette.pressed }]} accessibilityRole="button" accessibilityLabel="A moment to reflect" accessibilityHint="Opens your weekly reflection form">
+      <SquirclePressable exactSquircle onPress={onOpenReflection} style={({ pressed }) => [styles.habitPrompt, pressed && { backgroundColor: palette.pressed }]} accessibilityRole="button" accessibilityLabel="A moment to reflect" accessibilityHint="Opens your weekly reflection form">
         <View style={styles.habitMark}><AppIcon name="progress" style={visualStyle} size={18} color={colors.green} /></View>
         <View style={styles.entryCopy}><PageText display style={styles.emptyTitle}>A moment to reflect</PageText><PageText style={styles.emptySubtitle}>{model.savedReflection ? 'Your reflection is saved for this week.' : 'Note what helped, what got in the way, and what to change next.'}</PageText></View>
         <AppIcon name="arrow" style={visualStyle} size={17} color={colors.green} />

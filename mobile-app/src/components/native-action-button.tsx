@@ -1,4 +1,5 @@
 import { useTheme } from '@/hooks/use-theme';
+import { Radius } from '@/constants/theme';
 import { useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeActionButtonProps } from './native-action-button.types';
@@ -26,8 +27,9 @@ export default function NativeActionButton({
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
-        { minHeight: 44, paddingHorizontal: 12, borderRadius: 16, backgroundColor: appearance === 'prominent' ? theme.green : undefined },
+        { minHeight: 44, paddingHorizontal: 12, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: appearance === 'prominent' ? theme.green : undefined },
         style,
+        { borderRadius: Radius.pill, borderCurve: 'circular' },
         { height: undefined, minHeight: Math.max(44, minimumHeight) },
         pressed && { backgroundColor: appearance === 'prominent' ? theme.actionPressed : theme.pressed },
         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },

@@ -1,13 +1,14 @@
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, type AppTheme } from '@/constants/theme';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { forwardRef, useCallback, useContext, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
 import { Tray, useTray } from '../../shared/components/organisms/tray';
 import { AppTextInput } from '../../components/app-text-input';
+import { SquirclePressable } from '../../components/squircle-card';
 import AppleAuthButton from './apple-auth-button';
 import { GoogleGlyph } from './google-glyph';
 import { toast } from '../../components/toast';
@@ -130,13 +131,14 @@ function GuestWorkspaceSignInFlow() {
                 <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle)]}>Sign in to sync</Text>
                 <Text style={[styles.traySubtitle, textStyleForVisualStyle(visualStyle)]}>Choose an account. Your planner stays here until you choose to sync.</Text>
               </View>
-              <Tray.Close style={styles.headerControl}>
+              <Tray.Close style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.closeGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>×</Text>}
               </Tray.Close>
             </Tray.Header>
             <View style={styles.providersBody}>
               {authError ? <Feedback severity="error" message={authError} /> : null}
-              <Pressable
+              <SquirclePressable
+                pill
                 onPress={() => void beginSignIn('google')}
                 disabled={account.signingIn || busyProvider !== null || !account.configured}
                 style={({ pressed }) => [styles.providerButton, styles.googleButton, pressed && styles.buttonPressed, (account.signingIn || busyProvider !== null) && styles.buttonDisabled]}
@@ -149,7 +151,7 @@ function GuestWorkspaceSignInFlow() {
                   <TrayCopy style={styles.providerLabel}>Continue with Google</TrayCopy>
                 </View>
                 {busyProvider === 'google' ? <ActivityIndicator size="small" color={colors.green} style={styles.providerSpinner} /> : null}
-              </Pressable>
+              </SquirclePressable>
               {Platform.OS === 'ios' ? <View style={[styles.appleButtonWrap, (account.signingIn || busyProvider !== null) && styles.buttonDisabled]}>
                 <AppleAuthButton onPress={() => void beginSignIn('apple')} disabled={account.signingIn || busyProvider !== null || !account.configured} labelFontSize={14} />
                 {busyProvider === 'apple' ? <ActivityIndicator size="small" color={palette.onInk} style={styles.appleSpinner} pointerEvents="none" /> : null}
@@ -164,14 +166,14 @@ function GuestWorkspaceSignInFlow() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Tray.ScrollView maxHeight={scrollMaxHeight} contentContainerStyle={[styles.sheetContent, { paddingBottom: LayoutSpacing.group }]}>
             <Tray.Header style={styles.trayHeader}>
-              <Tray.Back style={styles.headerControl}>
+              <Tray.Back style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.backGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>‹</Text>}
               </Tray.Back>
               <View style={styles.headerCopy}>
                 <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle)]}>Confirm your name</Text>
                 <Text style={[styles.traySubtitle, textStyleForVisualStyle(visualStyle)]}>This name will appear on your account.</Text>
               </View>
-              <Tray.Close style={styles.headerControl}>
+              <Tray.Close style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.closeGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>×</Text>}
               </Tray.Close>
             </Tray.Header>
@@ -196,7 +198,7 @@ function GuestWorkspaceSignInFlow() {
               <TrayCopy style={styles.syncConsentCopy}>Choose whether to sync your planner to this account or keep it on this device. You can change this in Profile.</TrayCopy>
             </View>
             <View style={styles.confirmFooter}>
-              <Pressable
+              <SquirclePressable
                 onPress={() => void confirmName(true)}
                 disabled={savingName || !pendingAccount}
                 style={({ pressed }) => [styles.primaryAction, pressed && styles.buttonPressed, (savingName || !pendingAccount) && styles.buttonDisabled]}
@@ -206,8 +208,8 @@ function GuestWorkspaceSignInFlow() {
               >
                 {savingName ? <ActivityIndicator color={palette.onInk} size="small" /> : null}
                 <TrayCopy style={styles.primaryActionLabel}>Confirm name &amp; sync</TrayCopy>
-              </Pressable>
-              <Pressable
+              </SquirclePressable>
+              <SquirclePressable
                 onPress={() => void confirmName(false)}
                 disabled={savingName || !pendingAccount}
                 style={({ pressed }) => [styles.secondaryAction, pressed && styles.buttonPressed, (savingName || !pendingAccount) && styles.buttonDisabled]}
@@ -216,7 +218,7 @@ function GuestWorkspaceSignInFlow() {
                 accessibilityState={{ disabled: savingName || !pendingAccount, busy: savingName }}
               >
                 <TrayCopy style={styles.secondaryActionLabel}>Confirm name, keep data here</TrayCopy>
-              </Pressable>
+              </SquirclePressable>
             </View>
           </Tray.ScrollView>
         </KeyboardAvoidingView>
@@ -259,6 +261,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette; return Sty
   sheetContent: { flexGrow: 1, paddingBottom: 12 },
   trayHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: LayoutSpacing.screenInset, paddingTop: 10, paddingBottom: LayoutSpacing.control, gap: LayoutSpacing.control },
   headerControl: { width: 44, height: 44, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  headerPill: { borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen },
   closeGlyph: { color: colors.muted, fontSize: 22, lineHeight: 28 },
   backGlyph: { color: colors.muted, fontSize: 31, lineHeight: 36 },
   headerCopy: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3 },
@@ -266,7 +269,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette; return Sty
   traySubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, textAlign: 'center' },
   providersBody: { width: '100%', alignItems: 'stretch', paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.section, gap: LayoutSpacing.related },
   feedbackWrap: { paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.related },
-  providerButton: { width: '100%', alignSelf: 'stretch', minHeight: 56, borderRadius: 17, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
+  providerButton: { width: '100%', alignSelf: 'stretch', minHeight: 56, borderRadius: Radius.pill, borderCurve: 'circular', borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
   providerButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   googleButton: { borderColor: colors.line, backgroundColor: palette.surface },
   providerLabel: { fontSize: 14, fontWeight: '600' },
@@ -276,7 +279,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette; return Sty
   supportingText: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
   confirmBody: { paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.related },
   nameLabel: { color: colors.muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.1, marginBottom: 8 },
-  nameInput: { height: 52, paddingHorizontal: 15, borderRadius: 16, borderWidth: 1, backgroundColor: palette.surface, color: colors.ink, fontSize: 15, marginBottom: 13 },
+  nameInput: { height: 52, paddingHorizontal: 15, borderRadius: Radius.control, borderWidth: 1, backgroundColor: palette.surface, color: colors.ink, fontSize: 15, marginBottom: 13 },
   syncConsentCopy: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
   confirmFooter: { paddingHorizontal: LayoutSpacing.screenInset, paddingTop: LayoutSpacing.related, paddingBottom: LayoutSpacing.group },
   primaryAction: { minHeight: 52, borderRadius: 99, backgroundColor: palette.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15 },

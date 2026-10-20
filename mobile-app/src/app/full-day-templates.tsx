@@ -1,11 +1,11 @@
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, type AppTheme } from '@/constants/theme';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { AppIcon } from '../components/app-icon';
 import { PageText } from '../features/home/page-text';
 import { NON_TAB_HEADER_TITLE_SCALE, PAGE_HEADING_SCALE } from '../features/home/layout-metrics';
@@ -14,7 +14,9 @@ import { useHomeSession } from '../features/home/home-session';
 import { scheduleTemplates, templateAudiences, type ScheduleAudience } from '../features/templates/catalog';
 import NativeActionButton from '../components/native-action-button';
 import { ProgressiveEdgeBlur } from '../components/progressive-edge-blur';
-import { APP_STANDARD_HEADER_HEIGHT, scaleHeaderBlurIntensity, scaleHeaderGradientHeight } from '../components/header-gradient-metrics';
+import { ProgressiveHorizontalScrollView } from '../components/progressive-horizontal-scroll-view';
+import { SquirclePressable } from '../components/squircle-card';
+import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, topHeaderBlurHeight } from '../components/header-gradient-metrics';
 
 
 
@@ -27,16 +29,9 @@ export default function FullDayTemplatesScreen() {
   const [activeAudience, setActiveAudience] = useState<ScheduleAudience | 'All'>('All');
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
-  const headerHeight = insets.top + APP_STANDARD_HEADER_HEIGHT;
-  const collapseDistance = 42;
+  const headerHeight = insets.top + APP_NON_TAB_HEADER_HEIGHT;
+  const headerFadeHeight = insets.top + APP_HEADER_FADE_CONTENT_HEIGHT;
   const onScroll = useAnimatedScrollHandler({ onScroll: (event) => { scrollY.value = event.contentOffset.y; } });
-  const expandedTitleStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, collapseDistance * 0.6, collapseDistance], [1, 0.45, 0], Extrapolation.CLAMP),
-    transform: [{ translateY: interpolate(scrollY.value, [0, collapseDistance], [0, -6], Extrapolation.CLAMP) }],
-  }), [collapseDistance]);
-  const collapsedTitleStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [collapseDistance * 0.4, collapseDistance * 0.8, collapseDistance], [0, 0.75, 1], Extrapolation.CLAMP),
-  }), [collapseDistance]);
   return (
     <VisualStyleContext.Provider value={visualStyle}>
       <View style={styles.root}>
@@ -46,12 +41,12 @@ export default function FullDayTemplatesScreen() {
           <PageText style={styles.intro}>Explore flexible outlines for weekdays and weekends. Pick one, then adjust the blocks to suit your commitments and energy.</PageText>
           <NativeActionButton label="Create your own routine" systemImage="plus" iconPlacement="leading" appearance="bordered" tintColor={green} labelColor={green} onPress={() => router.push({ pathname: '/day-template-detail', params: { id: 'new' } })} style={styles.createButton}><AppIcon name="add" style={visualStyle} size={18} color={green} /><PageText style={styles.createButtonText}>Create your own routine</PageText></NativeActionButton>
           <PageText style={styles.sectionLabel}>AUDIENCE</PageText>
-          <ScrollView horizontal style={styles.audienceScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.audienceFilters}>
+          <ProgressiveHorizontalScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={styles.audienceFilters}>
             {(['All', ...templateAudiences] as const).map((audience) => {
               const selected = activeAudience === audience;
-              return <Pressable key={audience} onPress={() => setActiveAudience(audience)} style={[styles.audienceChip, selected && styles.audienceChipSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.audienceText, selected && styles.audienceTextSelected]}>{audience}</PageText></Pressable>;
+              return <SquirclePressable pill key={audience} onPress={() => setActiveAudience(audience)} style={[styles.audienceChip, selected && styles.audienceChipSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.audienceText, selected && styles.audienceTextSelected]}>{audience}</PageText></SquirclePressable>;
             })}
-          </ScrollView>
+          </ProgressiveHorizontalScrollView>
           <PageText style={styles.sectionLabel}>{activeAudience === 'All' ? `${scheduleTemplates.length} BUILT-IN RHYTHMS` : `${activeAudience.toUpperCase()} RHYTHMS`}</PageText>
           {activeAudience === 'All' && daySchedules.filter((schedule) => !schedule.sourceTemplateId && !scheduleTemplates.some((template) => template.id === schedule.id)).map((schedule) => <Link key={schedule.id} href={{ pathname: '/day-template-detail', params: { id: schedule.id, routineId: schedule.id } }} asChild><Pressable style={styles.routineItem} accessibilityRole="button" accessibilityLabel={`Edit ${schedule.title}`}><View style={styles.routineContent}><View style={styles.cardTop}><View style={styles.icon}><AppIcon name="clock" style={visualStyle} size={21} color={green} /></View><PageText style={styles.label}>YOUR ROUTINE</PageText></View><PageText display style={styles.cardTitle}>{schedule.title}</PageText><PageText style={styles.cardDescription}>{schedule.blocks.length} steps · choose your repeat days.</PageText><View style={styles.cardAction}><PageText style={styles.cardActionText}>Edit routine</PageText><AppIcon name="arrow" style={visualStyle} size={16} color={green} /></View></View></Pressable></Link>)}
           {scheduleTemplates.filter((schedule) => activeAudience === 'All' || schedule.audience === activeAudience).map((schedule) => {
@@ -65,14 +60,14 @@ export default function FullDayTemplatesScreen() {
             </View></Link.AppleZoom></Pressable></Link>;
           })}
         </Animated.ScrollView>
-        <ProgressiveEdgeBlur edge="top" surfaceColor={paper} intensity={scaleHeaderBlurIntensity(75)} style={{ height: scaleHeaderGradientHeight(headerHeight + 40), zIndex: 9, opacity: 0.95 }} />
-        <View pointerEvents="box-none" style={[styles.headerOverlay, { height: headerHeight }]}>
+        <ProgressiveEdgeBlur edge="bottom" surfaceColor={paper} style={{ zIndex: 8 }} />
+        <ProgressiveEdgeBlur edge="top" surfaceColor={paper} startOffset={0.8} scrollProgress={scrollY} revealDistance={headerFadeHeight} style={{ height: topHeaderBlurHeight(headerFadeHeight), zIndex: 9, opacity: 0.95 }} />
+        <View pointerEvents="box-none" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
           <View style={[styles.topBar, { marginTop: insets.top }]}>
             <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" appearance="plain" tintColor={ink} labelColor={ink} onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back"><AppIcon name="back" style={visualStyle} size={19} color={ink} /><PageText style={styles.backText}>Back</PageText></NativeActionButton>
-            <Animated.View pointerEvents="none" style={[styles.expandedPageTitle, expandedTitleStyle]}><PageText preserveDisplaySize style={styles.topBarTitle}>FULL-DAY RHYTHMS</PageText></Animated.View>
-            <Animated.View pointerEvents="none" style={[styles.collapsedPageTitle, collapsedTitleStyle]}><PageText preserveDisplaySize style={styles.collapsedTitle} numberOfLines={1}>Templates</PageText></Animated.View>
             <View style={styles.topBarBalance} />
           </View>
+          <View pointerEvents="none" style={[styles.collapsedPageTitle, { top: insets.top, height: APP_NON_TAB_HEADER_HEIGHT }]}><PageText style={styles.collapsedTitle} numberOfLines={1}>Full-day rhythms</PageText></View>
         </View>
       </View>
     </VisualStyleContext.Provider>
@@ -81,15 +76,13 @@ export default function FullDayTemplatesScreen() {
 
 const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper } = palette; return StyleSheet.create({
   root: { flex: 1, backgroundColor: paper },
-  headerOverlay: { position: 'absolute', zIndex: 10, top: 0, left: 0, right: 0, overflow: 'hidden' },
+  headerOverlay: { position: 'absolute', zIndex: 20, top: 0, left: 0, right: 0, overflow: 'hidden' },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: LayoutSpacing.screenInset },
-  topBar: { height: APP_STANDARD_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topBar: { height: APP_NON_TAB_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 },
   backText: { color: ink, fontSize: 13.2, fontWeight: '600' },
-  expandedPageTitle: { position: 'absolute', left: 94, right: 94, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  collapsedPageTitle: { position: 'absolute', left: 94, right: 94, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { color: muted, fontFamily: 'Satoshi', fontSize: 11, fontWeight: '700', letterSpacing: 1.4 },
-  collapsedTitle: { color: ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600' },
+  collapsedPageTitle: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 88, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  collapsedTitle: { width: '100%', color: ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600', textAlign: 'center' },
   topBarBalance: { width: 78 },
   eyebrow: { color: green, fontSize: 11, fontWeight: '700', letterSpacing: 1.3, marginTop: 20 },
   heading: { color: ink, fontSize: 31.9 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 39.6 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '500', marginTop: 8 },
@@ -97,8 +90,7 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   createButton: { minHeight: 50, marginBottom: 16, paddingHorizontal: 15, borderRadius: 99, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.lightGreen, flexDirection: 'row', alignItems: 'center', gap: 9 },
   createButtonText: { color: green, fontSize: 14.3, fontWeight: '600' },
   sectionLabel: { color: green, fontSize: 10.5, fontWeight: '700', letterSpacing: 1.15, marginTop: LayoutSpacing.group, marginBottom: LayoutSpacing.control },
-  audienceScroll: { marginHorizontal: -22 },
-  audienceFilters: { gap: 8, paddingHorizontal: 22, paddingVertical: 2 },
+  audienceFilters: { gap: 8, paddingVertical: 2 },
   audienceChip: { minHeight: 38, paddingHorizontal: 13, borderRadius: 999, justifyContent: 'center', backgroundColor: palette.lightGreen },
   audienceChipSelected: { backgroundColor: palette.green },
   audienceText: { color: muted, fontSize: 11.5, fontWeight: '500' },
