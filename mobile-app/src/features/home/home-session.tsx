@@ -1,12 +1,13 @@
+import { SquircleView, SquirclePressable } from '@/components/squircle-card';
 import { LocalSaveConfirmations, confirmSavedWrite } from './local-save-confirmation';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius } from '@/constants/theme';
-import { Pressable, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import type { DaySchedule } from './day-schedules';
 import { clearLegacySnapshots, clearLocalStorage, getLegacyQuarantine, getLegacySnapshots, listRecoverySnapshots, readSnapshot, saveRecoverySnapshot, writeLegacyQuarantine, writeSnapshot } from './home-storage';
 import { reconcileOverdue, type OccurrenceFields, type OccurrenceStatus } from './occurrences';
-import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle } from './visual-style-context';
+import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, headingFontFamilyForVisualStyle, textStyleForVisualStyle } from './visual-style-context';
 import { AnimatedSplash } from './animated-splash';
 import { SplashTargetContext, SplashStatusTransitionContext, type SplashTarget } from './splash-transition-context';
 
@@ -41,7 +42,7 @@ export function getGoalProgressStatus(goal: StarterPlan): TaskProgressStatus | u
 export type WeeklyReflection = { weekStart: string; wentWell: string; gotInWay: string; nextAdjustment: string; updatedAt: string };
 export type DailyCheckIn = { date: string; morning?: { mood: number; energy: number; sleepQuality: number; intention: string; updatedAt: string }; evening?: { mood: number; energy: number; productivity: number; satisfaction: number; reflection: string; updatedAt: string } };
 export type Commitment = { id: string; title: string; target: string; deadline: string; timeframe: string; why: string; goalId?: string; linkedSourceId?: string; linkedSourceType?: 'task' | 'habit'; requiredActions?: number; reward?: string; consequence?: string; createdAt: string };
-export type NotificationReminder = { id: string; title: string; time: string; repeat: 'once' | 'daily'; date?: string };
+export type NotificationReminder = { id: string; title: string; time: string; repeat: 'once' | 'daily'; importance?: 'normal' | 'important'; date?: string };
 export type AccountType = 'guest' | 'google' | 'apple';
 export type OnboardingProfile = {
   accountType: AccountType; syncConsent: boolean; syncConsentAt: string | null; syncConsentUserId: string | null; routineTemplateIds: string[]; accountabilityEnabled?: false; appearance: VisualStyle;
@@ -163,7 +164,9 @@ function normalizeSession(parsed: Partial<SessionState> & { selectedDay?: number
   const goalProgressEvents = Array.isArray(parsed.goalProgressEvents) ? parsed.goalProgressEvents.filter((event) => event && typeof event.id === 'string' && typeof event.sourceId === 'string' && typeof event.date === 'string' && typeof event.progressValue === 'number') : [];
   const checkIns = Array.isArray(parsed.checkIns) ? parsed.checkIns.filter((item) => item && typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) : [];
   const commitments = Array.isArray(parsed.commitments) ? parsed.commitments.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.target === 'string' && typeof item.deadline === 'string') : [];
-  const reminders: NotificationReminder[] = Array.isArray(parsed.reminders) ? parsed.reminders.filter((item): item is NotificationReminder => item != null && typeof item.id === 'string' && typeof item.title === 'string' && Boolean(item.title.trim()) && typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) && (item.repeat === 'daily' || (item.repeat === 'once' && validDate(item.date)))) : [];
+  const reminders: NotificationReminder[] = Array.isArray(parsed.reminders) ? parsed.reminders
+    .filter((item): item is NotificationReminder => item != null && typeof item.id === 'string' && typeof item.title === 'string' && Boolean(item.title.trim()) && typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) && (item.repeat === 'daily' || (item.repeat === 'once' && validDate(item.date))))
+    .map((item) => ({ ...item, importance: item.importance === 'important' ? 'important' : 'normal' })) : [];
   return { visualStyle: parsed.visualStyle, plans: migratedPlans, lifeAreas, entries: migratedEntries, taskDefinitions, habitDefinitions, goalProgressEvents, selectedDate: typeof parsed.selectedDate === 'string' ? parsed.selectedDate : today(), daySchedules: parsed.daySchedules, reflections: Array.isArray(parsed.reflections) ? parsed.reflections.filter((item) => item && typeof item.weekStart === 'string') : [], checkIns, commitments, reminders, onboarding, onboardingCompleted: parsed.onboardingCompleted, storageStatus: 'ready' };
 }
 
@@ -422,16 +425,16 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
       <SplashTargetContext.Provider value={splashTargetReporter}>
         <SplashStatusTransitionContext.Provider value={splashScreenRevealing}>
         {hydrated ? session.storageStatus === "recovery-blocked" ? (
-          <View style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: palette.paper }}>
-            <Text style={[{ color: palette.ink, fontSize: session.visualStyle === 'expressive' ? 27.5 * 0.9 : 27.5, lineHeight: session.visualStyle === 'expressive' ? 35.2 * 0.9 : 35.2, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Your saved data needs attention.</Text>
+          <SquircleView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: palette.paper }}>
+            <Text accessibilityRole="header" style={[{ color: palette.ink, fontSize: session.visualStyle === 'expressive' ? 27.5 * 0.9 : 27.5, lineHeight: session.visualStyle === 'expressive' ? 35.2 * 0.9 : 35.2 }, textStyleForVisualStyle(session.visualStyle), { fontFamily: headingFontFamilyForVisualStyle(session.visualStyle), fontWeight: '600' }]}>Your saved data needs attention.</Text>
             <Text style={[{ color: palette.muted, fontSize: session.visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4, lineHeight: session.visualStyle === 'expressive' ? 24.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 24.2, marginTop: 12 }, textStyleForVisualStyle(session.visualStyle)]}>Could not read your saved planner. Your saved copy is untouched. Try loading it again, or start fresh.</Text>
-            <Pressable onPress={retryLoad} style={{ minHeight: 52, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.green, alignItems: "center", justifyContent: "center", marginTop: 20 }}>
-              <Text style={[{ color: palette.onAccent, fontSize: session.visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Try reading saved data again</Text>
-            </Pressable>
-            <Pressable onPress={() => void startFreshGuestData()} style={{ minHeight: 48, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 14, marginTop: 8 }}>
-              <Text style={[{ color: palette.green, fontSize: session.visualStyle === 'expressive' ? 14.3 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 14.3, fontWeight: "600" }, textStyleForVisualStyle(session.visualStyle)]}>Start fresh on this device</Text>
-            </Pressable>
-          </View>
+            <SquirclePressable onPress={retryLoad} style={{ minHeight: 52, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.green, alignItems: "center", justifyContent: "center", marginTop: 20 }}>
+              <Text style={[{ color: palette.onAccent, fontSize: session.visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4 }, textStyleForVisualStyle(session.visualStyle)]}>Try reading saved data again</Text>
+            </SquirclePressable>
+            <SquirclePressable onPress={() => void startFreshGuestData()} style={{ minHeight: 48, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 14, marginTop: 8 }}>
+              <Text style={[{ color: palette.green, fontSize: session.visualStyle === 'expressive' ? 14.3 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 14.3 }, textStyleForVisualStyle(session.visualStyle)]}>Start fresh on this device</Text>
+            </SquirclePressable>
+          </SquircleView>
         ) : children : null}
         {!initialBootComplete && <AnimatedSplash
           readyToAnimate={startupAssetsReady && hydrated && splashTargetDecision !== 'pending'}

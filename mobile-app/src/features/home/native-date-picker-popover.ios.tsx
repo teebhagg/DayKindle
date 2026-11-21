@@ -13,7 +13,7 @@ export default function NativeDatePickerPopover({ value, minimumDate, displayVal
   const colors = palette;
   const [isPresented, setIsPresented] = useState(false);
   const visualStyle = useContext(VisualStyleContext);
-  const fontSize = visualStyle === 'expressive' ? 15.4 * 1.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4;
+  const fontSize = visualStyle === 'expressive' ? 15.4 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 15.4;
   return (
     <Host style={{ flex: 1, minHeight: 54 }}>
       <Popover

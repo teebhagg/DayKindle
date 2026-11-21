@@ -23,27 +23,59 @@ export type DaySchedule = {
 
 export const dayScheduleTemplates: DaySchedule[] = [
   {
-    id: 'steady-weekday',
+    id: 'daily-plan',
     dayType: 'weekday',
-    title: 'A steady weekday',
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    title: 'Daily Plan',
     blocks: [
-      { id: 'weekday-morning', time: 'Morning', title: 'Start gently', details: 'Choose one small thing that helps you begin the day with intention.' },
-      { id: 'weekday-focus', time: 'Late morning', title: 'Focus on a priority', details: 'Make space for one piece of work, study, or personal progress that matters today.' },
-      { id: 'weekday-pause', time: 'Midday', title: 'Pause and reset', details: 'Take a break that fits your day. Eat, move, rest, or step away for a few minutes.' },
-      { id: 'weekday-flex', time: 'Afternoon', title: 'Continue at your pace', details: 'Return to a useful next step, handle practical tasks, or adjust your plan.' },
-      { id: 'weekday-evening', time: 'Evening', title: 'Make room for yourself', details: 'Leave space for connection, hobbies, rest, or preparing for tomorrow.' },
-    ],
-  },
-  {
-    id: 'restful-weekend',
-    dayType: 'weekend',
-    title: 'A restorative weekend',
-    blocks: [
-      { id: 'weekend-morning', time: 'Morning', title: 'Start unhurried', details: 'Keep the start of the day open and choose what would feel useful or enjoyable.' },
-      { id: 'weekend-outside', time: 'Late morning', title: 'Move or get outside', details: 'Choose a walk, stretch, activity, or a change of scenery if it suits you.' },
-      { id: 'weekend-practical', time: 'Midday', title: 'Handle one practical thing', details: 'Make progress on a home, personal, or planning task. Leave room to stop.' },
-      { id: 'weekend-open', time: 'Afternoon', title: 'Leave some open time', details: 'Use this time for people, hobbies, rest, or whatever feels right today.' },
-      { id: 'weekend-evening', time: 'Evening', title: 'Close the day your way', details: 'Enjoy a quiet reset, connection, or an easy transition into the week ahead.' },
+      {
+        id: 'morning-anchor',
+        time: '06:30 AM – 07:15 AM',
+        title: 'Morning Anchor (Spiritual & Health)',
+        details: '• Devotional time: Bible reading, prayer, and quiet reflection.\n• Morning hygiene & 500ml water before anything else.',
+      },
+      {
+        id: 'exercise-breakfast',
+        time: '07:15 AM – 07:45 AM',
+        title: 'Simple Exercise & Breakfast',
+        details: '• 15–20 min rotation: Bodyweight circuit (push-ups, squats, plank) or a brisk walk.\n• Breakfast: Whole foods (e.g., eggs, fruit, oats/grain). Wash produce thoroughly and cook at home.',
+      },
+      {
+        id: 'deep-work-one',
+        time: '08:30 AM – 12:30 PM',
+        title: 'Deep Work Block 1',
+        details: '• 2x 90-minute focused work blocks (Pomodoro style: 90 min work, 15 min rest).\n• Tackle high-priority tasks first. Zero notifications during blocks.',
+      },
+      {
+        id: 'lunch-recharge',
+        time: '12:30 PM – 01:30 PM',
+        title: 'Lunch & Recharge',
+        details: '• Home-prepared, clean meal.\n• 20-minute step away from screens (short walk or total disconnect).',
+      },
+      {
+        id: 'deep-work-two',
+        time: '01:30 PM – 05:30 PM',
+        title: 'Deep Work Block 2 & Admin',
+        details: '• Execute remaining tasks, communication, and review.\n• Final 30 mins: Wrap up and plan tasks for the next day.',
+      },
+      {
+        id: 'loved-ones',
+        time: '05:30 PM – 07:30 PM',
+        title: 'Loved Ones & Connection',
+        details: '• Dedicated family/partner/friend time (dinner together, quality conversation).',
+      },
+      {
+        id: 'free-time',
+        time: '07:30 PM – 09:30 PM',
+        title: 'Personal Free Time & Leisure',
+        details: '• Open block: Play video games, watch a movie, engage in hobbies, or read.',
+      },
+      {
+        id: 'evening-wind-down',
+        time: '09:30 PM – 10:00 PM',
+        title: 'Evening Wind-down',
+        details: '• Gratitude/short prayer, prep workspace for tomorrow, phone away by 10:00 PM.',
+      },
     ],
   },
 ];

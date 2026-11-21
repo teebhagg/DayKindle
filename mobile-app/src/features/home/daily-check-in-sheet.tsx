@@ -1,23 +1,16 @@
 import { Feedback } from '@/components/app-feedback';
+import { SHEET_SNAP_POINTS } from '@/components/sheet-snap-points';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { useState, type ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type TextStyle,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CommunityBottomSheet, { BottomSheetScrollView, BottomSheetView } from '@expo/ui/community/bottom-sheet';
 import { AppTextInput } from '../../components/app-text-input';
 import { AppIcon } from '../../components/app-icon';
-import { SquircleCard, SquirclePressable } from '../../components/squircle-card';
-import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle } from './visual-style-context';
+import { SquircleCard, SquirclePressable, SquircleView } from '../../components/squircle-card';
+import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, headingFontFamilyForVisualStyle, textStyleForVisualStyle } from './visual-style-context';
 import { useHomeSession, type DailyCheckIn, type HomeEntry } from './home-session';
 import { toast } from '../../components/toast';
 import { posthog } from '../../lib/posthog';
@@ -32,16 +25,18 @@ function SheetText({
   style,
   visualStyle,
   display = false,
+  heading = display,
 }: {
   children: ReactNode;
   style?: StyleProp<TextStyle>;
   visualStyle: ReturnType<typeof useHomeSession>['visualStyle'];
   display?: boolean;
+  heading?: boolean;
 }) {
   const palette = useTheme();
   const colors = palette;
   const flatStyle = StyleSheet.flatten(style);
-  const scale = visualStyle === 'expressive' ? (display ? 1.7 * 0.9 : 1.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER) : 1;
+  const scale = visualStyle === 'expressive' ? (display ? 1.7 * 0.9 : EXPRESSIVE_FONT_SIZE_MULTIPLIER) : 1;
   const scaledType = scale === 1
     ? undefined
     : {
@@ -55,6 +50,7 @@ function SheetText({
         style,
         scaledType,
         textStyleForVisualStyle(visualStyle),
+        { ...(heading ? { fontFamily: headingFontFamilyForVisualStyle(visualStyle) } : {}), fontWeight: heading ? '600' : visualStyle === 'expressive' ? '400' : '200' },
       ]}
     >
       {children}
@@ -139,20 +135,19 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
       index={0}
       onClose={onClose}
       enablePanDownToClose
-      snapPoints={['60%', '90%']}
+      snapPoints={SHEET_SNAP_POINTS}
       backgroundStyle={{ backgroundColor: colors.paper }}
     >
       <BottomSheetView style={styles.sheetRoot}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         {storageStatus === 'save-error' ? <Feedback severity="error" message="Could not save this check-in. Your edits are still here." action={{ label: 'Save again', onPress: retrySave }} /> : null}
-        <View style={styles.headerWrap}>
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
+        <SquircleView style={styles.headerWrap}>
+          <SquircleView style={styles.header}>
+            <SquircleView style={styles.headerCopy}>
               <SheetText visualStyle={visualStyle} style={styles.eyebrow}>DAILY CHECK-IN</SheetText>
-              <SheetText visualStyle={visualStyle} style={styles.title}>{formatDateHeading(date)}</SheetText>
+              <SheetText heading visualStyle={visualStyle} style={styles.title}>{formatDateHeading(date)}</SheetText>
               <SheetText visualStyle={visualStyle} style={styles.subtitle}>Add a note about your day.</SheetText>
-            </View>
+            </SquircleView>
             <SquirclePressable
-              pill
               onPress={onClose}
               style={styles.closeButton}
               accessibilityRole="button"
@@ -161,24 +156,24 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
             >
               <AppIcon name="close" style={visualStyle} size={20} color={colors.ink} />
             </SquirclePressable>
-          </View>
-        </View>
+          </SquircleView>
+        </SquircleView>
         <BottomSheetScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.planSection}>
-            <View style={styles.sectionHeading}>
-              <View style={styles.planIcon}><AppIcon name="calendar" style={visualStyle} size={18} color={colors.green} /></View>
-              <View style={styles.sectionHeadingCopy}>
-                <SheetText visualStyle={visualStyle} style={styles.sectionTitle}>Your plan</SheetText>
+          <SquircleView style={styles.planSection}>
+            <SquircleView style={styles.sectionHeading}>
+              <SquircleView style={styles.planIcon}><AppIcon name="calendar" style={visualStyle} size={18} color={colors.green} /></SquircleView>
+              <SquircleView style={styles.sectionHeadingCopy}>
+                <SheetText heading visualStyle={visualStyle} style={styles.sectionTitle}>Your plan</SheetText>
                 <SheetText visualStyle={visualStyle} style={styles.sectionHint}>{plannedEntries.length ? `${plannedEntries.length} planned ${plannedEntries.length === 1 ? 'item' : 'items'}` : 'A quiet day is okay too'}</SheetText>
-              </View>
-            </View>
+              </SquircleView>
+            </SquircleView>
             {plannedEntries.length ? (
-              <View style={styles.planList}>
+              <SquircleView style={styles.planList}>
                 {plannedEntries.map((entry) => {
                   const complete = isEntryComplete(entry, date);
                   const status = entry.status && entry.status !== 'planned'
@@ -189,35 +184,34 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
                     : entry.type === 'habit' ? 'Habit' : 'Task';
                   const linkedGoal = entry.goalId ? plans.find((plan) => plan.id === entry.goalId)?.title : undefined;
                   return (
-                    <View
+                    <SquircleView
                       key={entry.id}
                       style={styles.planRow}
                       accessible
                       accessibilityLabel={`${kind}: ${entry.title}, ${status}${linkedGoal ? `, linked to ${linkedGoal}` : ''}`}
                     >
-                      <View style={[styles.planState, complete && styles.planStateComplete]}>
+                      <SquircleView style={[styles.planState, complete && styles.planStateComplete]}>
                         {complete ? <AppIcon name="check" style={visualStyle} size={13} color={palette.onInk} /> : null}
-                      </View>
-                      <View style={styles.planRowCopy}>
+                      </SquircleView>
+                      <SquircleView style={styles.planRowCopy}>
                         <SheetText visualStyle={visualStyle} style={styles.planTitle}>{entry.title}</SheetText>
                         <SheetText visualStyle={visualStyle} style={styles.planMeta}>{[kind, status, entry.time].filter(Boolean).join(' · ')}</SheetText>
                         {linkedGoal ? <SheetText visualStyle={visualStyle} style={styles.planGoal}>Goal: {linkedGoal}</SheetText> : null}
-                      </View>
-                    </View>
+                      </SquircleView>
+                    </SquircleView>
                   );
                 })}
-              </View>
+              </SquircleView>
             ) : (
               <SheetText visualStyle={visualStyle} style={styles.emptyPlan}>Nothing planned for this date. You can still leave a reflection.</SheetText>
             )}
-          </View>
+          </SquircleView>
 
-          <View style={styles.checkInSection}>
+          <SquircleView style={styles.checkInSection}>
             <SheetText visualStyle={visualStyle} style={styles.eyebrow}>REFLECT</SheetText>
             <SquircleCard style={styles.periodRow} accessibilityRole="radiogroup" accessibilityLabel="Choose morning or evening check-in">
               {(['morning', 'evening'] as const).map((item) => (
                 <SquirclePressable
-                  pill
                   key={item}
                   onPress={() => setPeriod(item)}
                   style={[styles.periodButton, period === item && styles.periodButtonSelected]}
@@ -267,7 +261,6 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
             )}
 
             <SquirclePressable
-            pill
               onPress={() => void saveCheckIn()} disabled={saving}
               style={styles.saveButton}
               accessibilityRole="button"
@@ -276,7 +269,7 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
               <SheetText visualStyle={visualStyle} style={styles.saveButtonText}>{saveLabel}</SheetText>
               <AppIcon name="check" style={visualStyle} size={18} color={palette.paper} />
             </SquirclePressable>
-          </View>
+          </SquircleView>
         </BottomSheetScrollView>
       </KeyboardAvoidingView></BottomSheetView>
     </CommunityBottomSheet>
@@ -296,12 +289,11 @@ function RatingPicker({
 }) {
     const styles = useThemedStyles(createStyles);
   return (
-    <View style={styles.ratingGroup}>
+    <SquircleView style={styles.ratingGroup}>
       <SheetText visualStyle={visualStyle} style={styles.fieldLabel}>{label}</SheetText>
-      <View style={styles.ratingRow}>
+      <SquircleView style={styles.ratingRow}>
         {[1, 2, 3, 4, 5].map((score) => (
           <SquirclePressable
-            pill
             key={score}
             onPress={() => onChange(score)}
             style={[styles.ratingChoice, value === score && styles.ratingChoiceSelected]}
@@ -312,8 +304,8 @@ function RatingPicker({
             <SheetText visualStyle={visualStyle} style={[styles.ratingText, value === score && styles.ratingTextSelected]}>{score}</SheetText>
           </SquirclePressable>
         ))}
-      </View>
-    </View>
+      </SquircleView>
+    </SquircleView>
   );
 }
 
@@ -322,7 +314,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette;  return St
   headerWrap: { paddingHorizontal: LayoutSpacing.sheetInset, paddingTop: 14, paddingBottom: LayoutSpacing.related },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: LayoutSpacing.related },
   headerCopy: { flex: 1, minWidth: 0, gap: LayoutSpacing.control },
-  eyebrow: { color: colors.green, fontSize: 10, fontWeight: '700', letterSpacing: 1.1 },
+  eyebrow: { color: colors.green, fontSize: 10, fontWeight: '400', letterSpacing: 1.1 },
   title: { fontSize: 22, lineHeight: 28, fontWeight: '600', marginTop: 3 },
   subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 2 },
   closeButton: { minWidth: 48, minHeight: 48, borderRadius: 999, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
@@ -339,7 +331,7 @@ const createStyles = (palette: AppTheme) => { const colors = palette;  return St
   planState: { width: 20, height: 20, borderRadius: 999, borderWidth: 1.5, borderColor: palette.controlBorder, alignItems: 'center', justifyContent: 'center' },
   planStateComplete: { backgroundColor: colors.green, borderColor: colors.green },
   planRowCopy: { flex: 1, gap: 2 },
-  planTitle: { fontSize: 13.5, lineHeight: 18, fontWeight: '500' },
+  planTitle: { fontSize: 13.5, lineHeight: 18, fontWeight: '400' },
   planMeta: { color: colors.muted, fontSize: 10.5, lineHeight: 15 },
   planGoal: { color: colors.green, fontSize: 10.5, lineHeight: 15 },
   emptyPlan: { color: colors.muted, fontSize: 12.5, lineHeight: 18, paddingTop: 2 },
@@ -347,16 +339,16 @@ const createStyles = (palette: AppTheme) => { const colors = palette;  return St
   periodRow: { flexDirection: 'row', gap: 8, padding: 4, borderRadius: Radius.control, backgroundColor: palette.lightGreen },
   periodButton: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
   periodButtonSelected: { backgroundColor: palette.green },
-  periodText: { fontFamily: 'Satoshi', color: colors.muted, fontSize: 13, fontWeight: '600' },
+  periodText: { fontFamily: 'Satoshi', color: colors.muted, fontSize: 13, fontWeight: '400' },
   periodTextSelected: { color: palette.onAccent },
   ratingGroup: { gap: 6 },
-  fieldLabel: { color: colors.green, fontSize: 12, fontWeight: '600' },
+  fieldLabel: { color: colors.green, fontSize: 12, fontWeight: '400' },
   ratingRow: { flexDirection: 'row', gap: 5 },
   ratingChoice: { flex: 1, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen },
   ratingChoiceSelected: { backgroundColor: colors.green },
-  ratingText: { fontFamily: 'Satoshi', fontSize: 13, fontWeight: '600' },
+  ratingText: { fontFamily: 'Satoshi', fontSize: 13, fontWeight: '400' },
   ratingTextSelected: { color: palette.onAccent },
   reflectionInput: { minHeight: 92, paddingHorizontal: 13, paddingVertical: 12, borderRadius: Radius.control, borderWidth: 1, borderColor: palette.line, backgroundColor: colors.surface, color: colors.ink, fontSize: 14, lineHeight: 20, textAlignVertical: 'top' },
   saveButton: { minHeight: 54, paddingHorizontal: 18, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.ink },
-  saveButtonText: { fontFamily: 'Satoshi', color: palette.paper, fontSize: 14, fontWeight: '600' },
+  saveButtonText: { fontFamily: 'Satoshi', color: palette.paper, fontSize: 14, fontWeight: '400' },
 }); };
