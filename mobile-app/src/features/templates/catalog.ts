@@ -1,6 +1,6 @@
 import type { AppIconName } from '../../components/app-icon';
 import type { HabitTrackingType, RecurrenceRule, StarterPlan } from '../home/home-session';
-import { dayScheduleTemplates, type DaySchedule, type DayScheduleBlock } from '../home/day-schedules';
+import { dayScheduleTemplates, type DaySchedule } from '../home/day-schedules';
 
 export const templateCategories = [
   'Health & Fitness',
@@ -42,13 +42,13 @@ export type HabitTemplate = {
   targetUnit?: string;
 };
 
-export type ScheduleAudience = 'General' | 'Student' | 'Employee' | 'Business owner' | 'Caregiver' | 'Shift & flexible worker';
+export type ScheduleAudience = 'General';
 export type ScheduleTemplate = DaySchedule & {
   audience: ScheduleAudience;
   description: string;
 };
 
-export const templateAudiences: ScheduleAudience[] = ['General', 'Student', 'Employee', 'Business owner', 'Caregiver', 'Shift & flexible worker'];
+export const templateAudiences: ScheduleAudience[] = ['General'];
 export const categoryIcons: Record<TemplateCategory, AppIconName> = {
   'Health & Fitness': 'fitness',
   'Sleep & Recovery': 'sleep',
@@ -116,132 +116,14 @@ export const habitTemplates: HabitTemplate[] = [
   { id: 'habit_general_checkin', kind: 'habit', category: 'General Goals', title: 'Take one small step toward a goal', description: 'Choose a next action that fits the day you have.', context: 'Adjust the action or cadence as your priorities and circumstances change.', icon: 'sparkle', suggestedRecurrence: 'selected_days', suggestedDaysOfWeek: [1, 3, 5], trackingType: 'boolean' },
 ];
 
-function blocks(id: string, entries: [string, string, string][]): DayScheduleBlock[] {
-  return entries.map(([time, title, details], index) => ({ id: `${id}-block-${index + 1}`, time, title, details }));
-}
-
-function schedule(id: string, audience: ScheduleAudience, dayType: DaySchedule['dayType'], title: string, daysOfWeek: number[], description: string, entries: [string, string, string][]): ScheduleTemplate {
-  return { id, audience, dayType, daysOfWeek, title, description, blocks: blocks(id, entries) };
-}
-
 const generalSchedules: ScheduleTemplate[] = dayScheduleTemplates.map((item) => ({
   ...item,
-  audience: 'General',
-  description: 'A flexible outline with open space for your own commitments and priorities.',
+  audience: "General",
+  description: "A complete daily outline with fixed time blocks and clear action prompts.",
 }));
 
-export const additionalScheduleTemplates: ScheduleTemplate[] = [
-  schedule('student-study-flow', 'Student', 'weekday', 'A flexible study day', [1, 2, 3, 4, 5], 'A study-first outline that leaves room for classes, travel, work, and changing deadlines.', [
-    ['Before the first commitment', 'Check today’s plan', 'Look at classes, tasks, and available time. Adjust the list to match the day.'],
-    ['First available study block', 'Work on one course task', 'Choose a reading, problem set, revision task, or project that fits this window.'],
-    ['Between commitments', 'Pause and reset', 'Eat, move, rest, or get ready for the next activity in the way that suits you.'],
-    ['Later open block', 'Review or prepare', 'Return to a small study step or prepare materials for a future class.'],
-  ]),
-  schedule('student-class-day', 'Student', 'weekday', 'A day around classes', [1, 2, 3, 4, 5], 'Place classes first, then fit study and breaks into the spaces that are actually available.', [
-    ['Before leaving or logging in', 'Gather what you need', 'Check the next class or learning commitment and bring the essentials.'],
-    ['Between classes', 'Capture one reminder', 'Write down a question, task, or topic to revisit when you have time.'],
-    ['After a class block', 'Take a real break', 'Choose food, movement, quiet, or a change of setting as needed.'],
-    ['When time opens up', 'Choose the next useful step', 'Do one task or leave the rest for another day if capacity is limited.'],
-  ]),
-  schedule('student-assignment-day', 'Student', 'weekday', 'A project work session day', [1, 2, 3, 4, 5], 'Use project blocks when your schedule allows; deadlines and study capacity can vary.', [
-    ['Planning moment', 'Break the project into steps', 'Pick a next action small enough to start in the time available.'],
-    ['Available focus block', 'Work on the chosen step', 'Use a study space or method that works for you today.'],
-    ['Between work blocks', 'Step away briefly', 'Let the length and kind of break fit your needs.'],
-    ['Closing moment', 'Save your place', 'Note what is done and what could come next.'],
-  ]),
-  schedule('student-campus-day', 'Student', 'weekday', 'A campus and personal day', [1, 2, 3, 4, 5], 'A flexible mix of learning, practical tasks, and personal time for campus days.', [
-    ['Start of your campus day', 'Check the day’s essentials', 'Review your commitments and bring what you need.'],
-    ['Between activities', 'Handle one small task', 'Reply, review notes, or leave this block open if you need a pause.'],
-    ['A suitable break', 'Refuel or get some air', 'Choose a meal, movement, rest, or quiet moment.'],
-    ['When you are ready', 'Wrap up or reconnect', 'Finish one small task, meet someone, or head into your next commitment.'],
-  ]),
-  schedule('employee-flex-day', 'Employee', 'weekday', 'A flexible workday', [1, 2, 3, 4, 5], 'Arrange focus, collaboration, and breaks around your actual working hours and responsibilities.', [
-    ['Start of your work period', 'Choose a priority', 'Check meetings and select a realistic next step.'],
-    ['First workable focus window', 'Make progress on focused work', 'Use this block only if your workload and schedule allow.'],
-    ['Between responsibilities', 'Pause or reset', 'Take a break or handle a practical task that fits the moment.'],
-    ['End of your work period', 'Close the loop', 'Capture unfinished items and leave room to disconnect when possible.'],
-  ]),
-  schedule('employee-meeting-day', 'Employee', 'weekday', 'A meeting-heavy day', [1, 2, 3, 4, 5], 'Keep planning and recovery blocks movable around meetings and team needs.', [
-    ['Before the first meeting', 'Check key notes', 'Review the most useful context for your first commitment.'],
-    ['Between meetings', 'Capture actions', 'Write down owners or next steps while they are fresh.'],
-    ['First open work window', 'Handle one priority task', 'Choose work that fits the length and energy of the window.'],
-    ['After the last meeting', 'Reset your workspace', 'Record follow-ups and choose what can wait.'],
-  ]),
-  schedule('employee-remote-day', 'Employee', 'weekday', 'A work-from-anywhere day', [1, 2, 3, 4, 5], 'Adapt the blocks to home, office, hybrid, or other work settings.', [
-    ['Settle into your work setting', 'Prepare for the day', 'Check access, materials, and the commitments that matter.'],
-    ['A suitable focus window', 'Work on one task', 'Choose a task that matches the time available and your environment.'],
-    ['Midway through your work period', 'Step away if you can', 'Stretch, eat, rest your eyes, or take another useful pause.'],
-    ['Before switching contexts', 'Note what comes next', 'Save work and identify a clear restart point.'],
-  ]),
-  schedule('employee-variable-day', 'Employee', 'weekday', 'A variable workday', [1, 2, 3, 4, 5], 'For days with changing tasks, locations, or availability; shift each block as needed.', [
-    ['When the day begins', 'Check what changed', 'Review the current schedule and identify any new constraints.'],
-    ['First available window', 'Choose a small priority', 'Select the most useful next action for this block.'],
-    ['When there is a gap', 'Take a reset or handle admin', 'Choose based on your energy and current responsibilities.'],
-    ['Before you finish', 'Leave a clear handoff', 'Record open items for yourself or your team.'],
-  ]),
-  schedule('owner-priority-day', 'Business owner', 'weekday', 'A business priority day', [1, 2, 3, 4, 5], 'Balance customer, operational, and planning needs using blocks you can move.', [
-    ['Start of your available work period', 'Choose one business priority', 'Consider customer needs, deadlines, and the time you have.'],
-    ['First workable focus window', 'Move one priority forward', 'Choose a task you can make progress on without overloading the day.'],
-    ['Open admin window', 'Handle essential operations', 'Use this for messages, records, supplies, or another practical need.'],
-    ['Before you wrap up', 'Check the next handoff', 'Note follow-ups and decide what can wait.'],
-  ]),
-  schedule('owner-customer-day', 'Business owner', 'weekday', 'A customer-facing day', [1, 2, 3, 4, 5], 'Leave the timing open around customer demand, appointments, and service work.', [
-    ['Before customer work', 'Review the day’s commitments', 'Check appointments, requests, or service needs that are already known.'],
-    ['Between customer blocks', 'Record follow-ups', 'Capture details while allowing time for transitions.'],
-    ['When demand eases', 'Handle one back-office task', 'Choose admin or preparation that fits the opening.'],
-    ['End of your work period', 'Prepare a short handoff', 'Note any customer follow-up or operational item that remains.'],
-  ]),
-  schedule('owner-planning-day', 'Business owner', 'weekday', 'A planning and operations day', [1, 2, 3, 4, 5], 'Make room for planning while keeping operational work and interruptions in view.', [
-    ['Planning window', 'Review current priorities', 'Choose a short list based on current needs and capacity.'],
-    ['First open work block', 'Handle one operational task', 'Make progress on a task that supports the business today.'],
-    ['A quieter window', 'Review finances or records', 'Choose only the review that is relevant and useful now.'],
-    ['Closing moment', 'Choose the next action', 'Leave a note for a future work period.'],
-  ]),
-  schedule('owner-flex-day', 'Business owner', 'weekday', 'A flexible owner-operator day', [1, 2, 3, 4, 5], 'A movable outline for people balancing several roles or irregular business demands.', [
-    ['When you are ready to begin', 'Check the essentials', 'Identify urgent needs and what can be moved.'],
-    ['A gap between responsibilities', 'Advance one useful task', 'Choose from operations, service, planning, or leave the time open.'],
-    ['A suitable pause', 'Refuel or reset', 'Make room for food, movement, rest, or personal responsibilities.'],
-    ['When capacity allows', 'Prepare for the next work window', 'Capture the next step and stop when you need to.'],
-  ]),
-  schedule('caregiver-flex-day', 'Caregiver', 'weekday', 'A flexible caregiving day', [1, 2, 3, 4, 5, 6, 0], 'Care needs can change quickly; use these as movable prompts and leave blocks open as needed.', [
-    ['When the day allows', 'Check immediate needs', 'Review appointments, supplies, or support needs that matter now.'],
-    ['During a quiet opening', 'Handle one personal task', 'Choose something small that can be paused or rescheduled.'],
-    ['When support is available', 'Take a break for yourself', 'Use the time for rest, a meal, movement, or another need.'],
-    ['Before the next transition', 'Prepare one helpful item', 'Only do what fits the care plan and your available energy.'],
-  ]),
-  schedule('caregiver-appointment-day', 'Caregiver', 'weekday', 'A day with care appointments', [1, 2, 3, 4, 5, 6, 0], 'Adapt around appointments, travel, waiting, and the needs of the person receiving care.', [
-    ['Before an appointment', 'Gather useful information', 'Bring questions, documents, or supplies relevant to the visit.'],
-    ['Around travel or waiting', 'Leave transition space', 'Allow extra room for changes and rest where possible.'],
-    ['After the appointment', 'Capture the next step', 'Record follow-ups or instructions that are useful to remember.'],
-    ['When the day settles', 'Check your own needs', 'Choose food, rest, or support if you have the capacity.'],
-  ]),
-  schedule('caregiver-support-day', 'Caregiver', 'weekday', 'A day with shared support', [1, 2, 3, 4, 5, 6, 0], 'Use only the blocks that fit your support arrangement and the care needs of the day.', [
-    ['Before support begins', 'Share key information', 'Pass along routines, contacts, or changes that matter for the handoff.'],
-    ['During an available window', 'Choose one personal priority', 'Rest, connect, or handle a task that has been waiting.'],
-    ['Before support ends', 'Plan the transition', 'Confirm the next practical step if that is useful.'],
-    ['When your day allows', 'Make room to recover', 'Choose a restorative activity without setting a fixed duration.'],
-  ]),
-  schedule('shift-transition-day', 'Shift & flexible worker', 'weekday', 'A shift transition day', [1, 2, 3, 4, 5, 6, 0], 'Move each block around your actual shift, commute, and recovery needs.', [
-    ['Before your shift period', 'Check what you need', 'Review the current commitment and prepare essentials if helpful.'],
-    ['During a suitable break', 'Pause and refuel', 'Use the break available to you for food, water, rest, or movement.'],
-    ['After the work period', 'Make a gentle transition', 'Choose a quiet activity or practical step that suits your energy.'],
-    ['When you are ready to rest', 'Reduce extra demands', 'Leave room for the amount and timing of rest that fits your shift.'],
-  ]),
-  schedule('shift-variable-week', 'Shift & flexible worker', 'weekday', 'A variable shift week', [1, 2, 3, 4, 5, 6, 0], 'Choose repeat days that match your roster; the blocks do not assume a day or night shift.', [
-    ['When you check your roster', 'Mark the next commitment', 'Let your actual shift pattern determine what this week looks like.'],
-    ['Before a work period', 'Prepare one practical item', 'Keep this brief and adapt it to the time you have.'],
-    ['After a work period', 'Choose a recovery step', 'Rest, eat, connect, or handle a necessary task based on your needs.'],
-    ['At a convenient point', 'Review upcoming changes', 'Update selected days or leave the schedule open when shifts change.'],
-  ]),
-  schedule('flexible-commitments-day', 'Shift & flexible worker', 'weekday', 'A day with changing commitments', [1, 2, 3, 4, 5, 6, 0], 'For rotating, on-call, freelance, or otherwise changing commitments.', [
-    ['When your availability is clear', 'Choose one priority', 'Select something that fits the time you actually have.'],
-    ['Between commitments', 'Capture what is next', 'Use a note or reminder if several transitions are coming up.'],
-    ['When an opening appears', 'Take a useful pause', 'Choose rest, food, movement, or a small practical step.'],
-    ['When the plan changes', 'Adjust without penalty', 'Change the selected days or leave a block unused.'],
-  ]),
-];
+export const scheduleTemplates: ScheduleTemplate[] = generalSchedules;
 
-export const scheduleTemplates: ScheduleTemplate[] = [...generalSchedules, ...additionalScheduleTemplates];
 export const allGoalAndHabitTemplates: (GoalTemplate | HabitTemplate)[] = [...goalTemplates, ...habitTemplates];
 export const templateCatalogCounts = {
   goals: goalTemplates.length,

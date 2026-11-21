@@ -1,10 +1,10 @@
-import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
+import { SquircleCard, SquirclePressable, SquircleView } from '@/components/squircle-card';
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { useState, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
@@ -18,7 +18,7 @@ import { createOccurrenceId } from '../features/home/occurrences';
 import NativeActionButton from '../components/native-action-button';
 import { AppTextInput as TextInput } from '../components/app-text-input';
 import { ProgressiveEdgeBlur } from '../components/progressive-edge-blur';
-import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, topHeaderBlurHeight } from '../components/header-gradient-metrics';
+import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, APP_HEADER_BAR_HEIGHT, IOS_TITLE_OPTICAL_PADDING_BOTTOM, topHeaderBlurHeight } from '../components/header-gradient-metrics';
 import { posthog } from '../lib/posthog';
 
 
@@ -32,13 +32,13 @@ export default function TemplateDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const template = allGoalAndHabitTemplates.find((item) => item.id === id);
   if (!template) {
-    return <View style={styles.root}><PageText display style={styles.title}>Template not found</PageText><NativeActionButton label="Go back" onPress={() => router.back()} appearance="plain" tintColor={ink} labelColor={ink} style={styles.backButton}><PageText style={styles.backText}>Go back</PageText></NativeActionButton></View>;
+    return <SquircleView style={styles.root}><PageText display heading style={styles.title}>Template not found</PageText><NativeActionButton label="Go back" onPress={() => router.back()} appearance="plain" tintColor={ink} labelColor={ink} style={styles.backButton}><PageText style={styles.backText}>Go back</PageText></NativeActionButton></SquircleView>;
   }
   return <TemplateSetup key={template.id} template={template} />;
 }
 
 function TemplateSetup({ template }: { template: GoalTemplate | HabitTemplate }) {
-  const palette = useTheme();  const { ink, muted, green, paper } = palette; const styles = useThemedStyles(createStyles);
+  const palette = useTheme();  const { ink, green, paper } = palette; const styles = useThemedStyles(createStyles);
   const { visualStyle, plans, setPlans, habitDefinitions, setHabitDefinitions, confirmLocalSave, storageStatus, retrySave } = useHomeSession();
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
@@ -135,15 +135,15 @@ function TemplateSetup({ template }: { template: GoalTemplate | HabitTemplate })
   const habit = template.kind === 'habit' ? template as HabitTemplate : undefined;
   return (
     <VisualStyleContext.Provider value={visualStyle}>
-      <View style={styles.root}>
+      <SquircleView style={styles.root}>
         <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: headerHeight, paddingBottom: Math.max(insets.bottom, 20) + 26 }]}>
-          <Link.AppleZoomTarget><View collapsable={false} style={styles.hero}>
-            <View style={styles.heroIcon}><AppIcon name={categoryIcons[template.category]} style={visualStyle} size={31} color={green} /></View>
-            <View><PageText style={styles.eyebrow}>{template.category.toUpperCase()}</PageText><PageText style={styles.kindLabel}>{template.kind.toUpperCase()} TEMPLATE</PageText></View>
-          </View></Link.AppleZoomTarget>
-          <PageText display style={styles.title}>{template.title}</PageText>
+          <Link.AppleZoomTarget><SquircleView collapsable={false} style={styles.hero}>
+            <SquircleView style={styles.heroIcon}><AppIcon name={categoryIcons[template.category]} style={visualStyle} size={31} color={green} /></SquircleView>
+            <SquircleView><PageText style={styles.eyebrow}>{template.category.toUpperCase()}</PageText><PageText style={styles.kindLabel}>{template.kind.toUpperCase()} TEMPLATE</PageText></SquircleView>
+          </SquircleView></Link.AppleZoomTarget>
+          <PageText display heading style={styles.title}>{template.title}</PageText>
           <PageText style={styles.description}>{template.description}</PageText>
-          <SquircleCard style={styles.contextCard}><View style={styles.contextIcon}><AppIcon name="sparkle" style={visualStyle} size={17} color={green} /></View><View style={styles.contextCopy}><PageText style={styles.contextLabel}>A FLEXIBLE STARTING POINT</PageText><PageText style={styles.contextText}>{template.context}</PageText></View></SquircleCard>
+          <SquircleCard style={styles.contextCard}><SquircleView style={styles.contextIcon}><AppIcon name="sparkle" style={visualStyle} size={17} color={green} /></SquircleView><SquircleView style={styles.contextCopy}><PageText style={styles.contextLabel}>A FLEXIBLE STARTING POINT</PageText><PageText style={styles.contextText}>{template.context}</PageText></SquircleView></SquircleCard>
 
           <PageText style={styles.sectionLabel}>NAME</PageText>
           <TextInput hideLabel editable={!pendingSave && !saving} ref={nameInput} error={invalidField === "name" ? saveError : undefined} value={title} onChangeText={setTitle} placeholder="Name this goal or habit" placeholderTextColor={palette.muted} maxLength={100} style={styles.field} accessibilityLabel="Goal or habit title" />
@@ -151,48 +151,50 @@ function TemplateSetup({ template }: { template: GoalTemplate | HabitTemplate })
             <PageText style={styles.fieldLabel}>FIRST STEP</PageText>
             <TextInput hideLabel editable={!pendingSave && !saving} ref={stepInput} error={invalidField === "step" ? saveError : undefined} value={firstStep} onChangeText={setFirstStep} placeholder="Choose a small first step" placeholderTextColor={palette.muted} maxLength={180} style={[styles.field, styles.multilineField]} multiline textAlignVertical="top" accessibilityLabel="First step" />
             <PageText style={styles.fieldLabel}>OPTIONAL TARGET</PageText>
-            <View style={styles.measureRow}><TextInput editable={!pendingSave && !saving} label="Target" ref={amountInput} error={invalidField === "amount" ? saveError : undefined} value={goalTarget} onChangeText={setGoalTarget} placeholder="Amount" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional goal target" /><TextInput editable={!pendingSave && !saving} label="Unit" ref={unitInput} error={invalidField === "unit" ? saveError : undefined} value={goalUnit} onChangeText={setGoalUnit} placeholder="Unit" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional goal target unit" /></View>
+            <SquircleView style={styles.measureRow}><TextInput editable={!pendingSave && !saving} label="Target" ref={amountInput} error={invalidField === "amount" ? saveError : undefined} value={goalTarget} onChangeText={setGoalTarget} placeholder="Amount" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional goal target" /><TextInput editable={!pendingSave && !saving} label="Unit" ref={unitInput} error={invalidField === "unit" ? saveError : undefined} value={goalUnit} onChangeText={setGoalUnit} placeholder="Unit" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional goal target unit" /></SquircleView>
             <PageText style={styles.helper}>Leave both target fields empty for an open-ended goal.</PageText>
           </> : habit ? <>
             <PageText style={styles.fieldLabel}>WHEN WOULD YOU LIKE TO REPEAT IT?</PageText>
-            <View style={styles.optionRow}>{(['daily', 'weekdays', 'weekends', 'selected_days'] as const).map((value) => {
+            <SquircleView style={styles.optionRow}>{(['daily', 'weekdays', 'weekends', 'selected_days'] as const).map((value) => {
               const selected = recurrence === value;
               const label = value === 'selected_days' ? 'Choose days' : value[0].toUpperCase() + value.slice(1);
-              return <SquirclePressable pill disabled={pendingSave || saving} key={value} onPress={() => setRecurrence(value)} style={[styles.option, selected && styles.optionSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</PageText></SquirclePressable>;
-            })}</View>
-            {recurrence === 'selected_days' && <View style={styles.daysRow}>{weekdayNames.map((name, day) => {
+              return <SquirclePressable disabled={pendingSave || saving} key={value} onPress={() => setRecurrence(value)} style={[styles.option, selected && styles.optionSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</PageText></SquirclePressable>;
+            })}</SquircleView>
+            {recurrence === 'selected_days' && <SquircleView style={styles.daysRow}>{weekdayNames.map((name, day) => {
               const selected = daysOfWeek.includes(day);
-              return <SquirclePressable pill disabled={pendingSave || saving} key={name} onPress={() => toggleDay(day)} style={[styles.dayChip, selected && styles.dayChipSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><PageText style={[styles.dayChipText, selected && styles.dayChipTextSelected]}>{name}</PageText></SquirclePressable>;
-            })}</View>}
+              return <SquirclePressable disabled={pendingSave || saving} key={name} onPress={() => toggleDay(day)} style={[styles.dayChip, selected && styles.dayChipSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><PageText style={[styles.dayChipText, selected && styles.dayChipTextSelected]}>{name}</PageText></SquirclePressable>;
+            })}</SquircleView>}
             <PageText style={styles.fieldLabel}>HOW WOULD YOU LIKE TO TRACK IT?</PageText>
-            <View style={styles.optionRow}>{([{ value: 'boolean', label: 'Done or not done' }, { value: 'quantity', label: 'Amount' }, { value: 'duration', label: 'Duration' }] as const).map(({ value, label }) => {
+            <SquircleView style={styles.optionRow}>{([{ value: 'boolean', label: 'Done or not done' }, { value: 'quantity', label: 'Amount' }, { value: 'duration', label: 'Duration' }] as const).map(({ value, label }) => {
               const selected = trackingType === value;
-              return <SquirclePressable pill disabled={pendingSave || saving} key={value} onPress={() => setTrackingType(value)} style={[styles.option, selected && styles.optionSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</PageText></SquirclePressable>;
-            })}</View>
+              return <SquirclePressable disabled={pendingSave || saving} key={value} onPress={() => setTrackingType(value)} style={[styles.option, selected && styles.optionSelected]} accessibilityRole="button" accessibilityState={{ selected }}><PageText style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</PageText></SquirclePressable>;
+            })}</SquircleView>
             {trackingType !== 'boolean' && <>
               <PageText style={styles.fieldLabel}>OPTIONAL TRACKING TARGET</PageText>
-              <View style={styles.measureRow}><TextInput editable={!pendingSave && !saving} label="Target" ref={amountInput} error={invalidField === "amount" ? saveError : undefined} value={targetValue} onChangeText={setTargetValue} placeholder="Amount" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional habit target" /><TextInput editable={!pendingSave && !saving} label="Unit" ref={unitInput} error={invalidField === "unit" ? saveError : undefined} value={targetUnit} onChangeText={setTargetUnit} placeholder={trackingType === 'duration' ? 'Minutes' : 'Unit'} placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional habit target unit" /></View>
+              <SquircleView style={styles.measureRow}><TextInput editable={!pendingSave && !saving} label="Target" ref={amountInput} error={invalidField === "amount" ? saveError : undefined} value={targetValue} onChangeText={setTargetValue} placeholder="Amount" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional habit target" /><TextInput editable={!pendingSave && !saving} label="Unit" ref={unitInput} error={invalidField === "unit" ? saveError : undefined} value={targetUnit} onChangeText={setTargetUnit} placeholder={trackingType === 'duration' ? 'Minutes' : 'Unit'} placeholderTextColor={palette.muted} style={[styles.field, styles.measureField]} accessibilityLabel="Optional habit target unit" /></SquircleView>
             </>}
             <PageText style={styles.helper}>Recurrence and tracking stay editable from your routine list.</PageText>
           </> : null}
 
           {saveError ? <Feedback severity="error" message={saveError} /> : null}
-          <NativeActionButton label={added ? `Already added to your ${template.kind === 'goal' ? 'goals' : 'habits'}` : `Save to my ${template.kind === 'goal' ? 'goals' : 'habits'}`} systemImage={added ? 'checkmark' : 'arrow.right'} onPress={() => void save()} disabled={saving || added && !pendingSave} style={[styles.action, (saving || added && !pendingSave) && styles.actionDisabled]}>
+          <SquircleView style={styles.actionRow}>
+          <NativeActionButton label={added ? `Already added to your ${template.kind === 'goal' ? 'goals' : 'habits'}` : `Save to my ${template.kind === 'goal' ? 'goals' : 'habits'}`} systemImage={added ? 'checkmark' : 'arrow.right'} onPress={() => void save()} disabled={saving || added && !pendingSave} style={[styles.action, styles.actionInRow, (saving || added && !pendingSave) && styles.actionDisabled]}>
             <PageText style={styles.actionText}>{added ? 'Already in your routines' : `Save to my ${template.kind === 'goal' ? 'goals' : 'habits'}`}</PageText>
             <AppIcon name={added ? 'check' : 'arrow'} style={visualStyle} size={18} color={added ? green : palette.onInk} />
           </NativeActionButton>
-          <NativeActionButton label="Cancel" onPress={() => router.back()} appearance="plain" tintColor={muted} labelColor={muted} style={styles.cancelButton}><PageText style={styles.cancelText}>Cancel</PageText></NativeActionButton>
+          <NativeActionButton label="Cancel" onPress={() => router.back()} appearance={Platform.OS === 'android' ? 'custom' : 'bordered'} tintColor={palette.error} labelColor={palette.error} style={[styles.cancelButton, styles.cancelInRow]}><PageText style={styles.cancelText}>Cancel</PageText></NativeActionButton>
+          </SquircleView>
         </Animated.ScrollView>
         <ProgressiveEdgeBlur edge="bottom" surfaceColor={paper} style={{ zIndex: 8 }} />
         <ProgressiveEdgeBlur edge="top" surfaceColor={paper} startOffset={0.8} scrollProgress={scrollY} revealDistance={headerFadeHeight} style={{ height: topHeaderBlurHeight(headerFadeHeight), zIndex: 9, opacity: 0.95 }} />
-        <View pointerEvents="box-none" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
-          <View style={[styles.topBar, { marginTop: insets.top }]}>
-            <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" appearance="plain" tintColor={ink} labelColor={ink} onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back"><AppIcon name="back" style={visualStyle} size={19} color={ink} /><PageText style={styles.backText}>Back</PageText></NativeActionButton>
-            <View style={styles.topBarBalance} />
-          </View>
-          <View pointerEvents="none" style={[styles.collapsedPageTitle, { top: insets.top, height: APP_NON_TAB_HEADER_HEIGHT }]}><PageText style={styles.collapsedTitle} numberOfLines={1}>{template.title}</PageText></View>
-        </View>
-      </View>
+        <SquircleView pointerEvents="auto" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
+          <SquircleView style={[styles.topBar, { marginTop: insets.top }]}>
+            <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" iosHeaderStyle="back" appearance={Platform.OS === 'android' ? 'custom' : 'plain'} tintColor={ink} labelColor={ink} onPress={() => router.back()} style={[styles.backButton, Platform.OS === 'android' && { backgroundColor: 'transparent' }]} accessibilityLabel="Go back"><AppIcon name="back" style={visualStyle} size={19} color={ink} /><PageText style={styles.backText}>Back</PageText></NativeActionButton>
+            <SquircleView style={styles.topBarBalance} />
+          </SquircleView>
+          <SquircleView pointerEvents="none" style={[styles.collapsedPageTitle, { top: insets.top, height: APP_HEADER_BAR_HEIGHT }]}><PageText heading style={styles.collapsedTitle} numberOfLines={1}>{template.title}</PageText></SquircleView>
+        </SquircleView>
+      </SquircleView>
     </VisualStyleContext.Provider>
   );
 }
@@ -209,25 +211,25 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   root: { flex: 1, backgroundColor: paper },
   headerOverlay: { position: 'absolute', zIndex: 20, top: 0, left: 0, right: 0, overflow: 'hidden' },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: LayoutSpacing.screenInset },
-  topBar: { height: APP_NON_TAB_HEADER_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topBar: { height: APP_HEADER_BAR_HEIGHT, paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 },
-  backText: { color: ink, fontSize: 13.2, fontWeight: '600' },
-  collapsedPageTitle: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 88, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: ink, fontSize: 13.2, fontWeight: '400' },
+  collapsedPageTitle: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 124, paddingBottom: IOS_TITLE_OPTICAL_PADDING_BOTTOM, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   collapsedTitle: { width: '100%', color: ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600', textAlign: 'center' },
   topBarBalance: { width: 78 },
   hero: { minHeight: 102, marginTop: 20, flexDirection: 'row', alignItems: 'center', gap: 14 },
   heroIcon: { width: 88, height: 88, borderRadius: Radius.hero, backgroundColor: palette.lightGreen, alignItems: 'center', justifyContent: 'center' },
-  eyebrow: { color: green, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 },
-  kindLabel: { color: muted, fontSize: 9.9, fontWeight: '700', letterSpacing: 1.1, marginTop: 6 },
+  eyebrow: { color: green, fontSize: 11, fontWeight: '400', letterSpacing: 1.3 },
+  kindLabel: { color: muted, fontSize: 9.9, fontWeight: '400', letterSpacing: 1.1, marginTop: 6 },
   title: { color: ink, fontSize: 33 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 40.7 * PAGE_HEADING_SCALE * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '500', marginTop: 20 },
   description: { color: muted, fontSize: 16.5, lineHeight: 25.3, marginTop: 9 },
   contextCard: { flexDirection: 'row', gap: LayoutSpacing.related, padding: LayoutSpacing.cardInset, marginTop: LayoutSpacing.section, borderRadius: Radius.card, backgroundColor: palette.warmSurface },
   contextIcon: { width: 34, height: 34, borderRadius: 999, backgroundColor: palette.warmSurface, alignItems: 'center', justifyContent: 'center' },
   contextCopy: { flex: 1, gap: 7 },
-  contextLabel: { color: green, fontSize: 9.9, fontWeight: '700', letterSpacing: 1.1 },
+  contextLabel: { color: green, fontSize: 9.9, fontWeight: '400', letterSpacing: 1.1 },
   contextText: { color: ink, fontSize: 14.3, lineHeight: 22 },
-  sectionLabel: { color: green, fontSize: 10.5, fontWeight: '700', letterSpacing: 1.2, marginTop: LayoutSpacing.section, marginBottom: LayoutSpacing.control },
-  fieldLabel: { color: green, fontSize: 9.9, fontWeight: '700', letterSpacing: 1.1, marginTop: 15, marginBottom: 7 },
+  sectionLabel: { color: green, fontSize: 10.5, fontWeight: '400', letterSpacing: 1.2, marginTop: LayoutSpacing.section, marginBottom: LayoutSpacing.control },
+  fieldLabel: { color: green, fontSize: 9.9, fontWeight: '400', letterSpacing: 1.1, marginTop: 15, marginBottom: 7 },
   field: { minHeight: 48, paddingHorizontal: 13, borderRadius: Radius.control, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, color: ink, fontSize: 14.3 },
   multilineField: { minHeight: 78, paddingTop: 12, lineHeight: 20 },
   measureRow: { flexDirection: 'row', gap: 8 },
@@ -236,16 +238,19 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper 
   optionRow: { flexDirection: 'row', gap: 7, flexWrap: 'wrap' },
   option: { minHeight: 38, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center', backgroundColor: palette.lightGreen },
   optionSelected: { backgroundColor: palette.green },
-  optionText: { color: muted, fontSize: 11.5, fontWeight: '500' },
+  optionText: { color: muted, fontSize: 11.5, fontWeight: '400' },
   optionTextSelected: { color: palette.onAccent },
   daysRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 9 },
   dayChip: { minWidth: 40, minHeight: 44, paddingHorizontal: 8, borderRadius: 99, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.lightGreen },
   dayChipSelected: { backgroundColor: palette.green },
-  dayChipText: { color: muted, fontSize: 11.5, fontWeight: '500' },
+  dayChipText: { color: muted, fontSize: 11.5, fontWeight: '400' },
   dayChipTextSelected: { color: palette.onAccent },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22 },
+  actionInRow: { flex: 1, width: undefined, marginTop: 0 },
+  cancelInRow: { flex: 1, minHeight: 54, marginTop: 0, borderRadius: 999, backgroundColor: palette.errorBackground },
   action: { minHeight: 54, marginTop: 22, paddingHorizontal: 18, borderRadius: 999, backgroundColor: palette.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionDisabled: { opacity: 0.48 },
-  actionText: { color: palette.onAccent, fontSize: 14.3, fontWeight: '600' },
+  actionText: { color: palette.onAccent, fontSize: 14.3, fontWeight: '400' },
   cancelButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { color: muted, fontSize: 13.2 },
+  cancelText: { color: palette.error, fontSize: 13.2 },
 }); };
