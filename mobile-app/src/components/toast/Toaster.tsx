@@ -1,11 +1,11 @@
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useContext, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TToastRecord, TToasterProps } from './Toast.types';
 import { createToastStyles } from './toast.theme';
 import { textStyleForVisualStyle, VisualStyleContext } from '../../features/home/visual-style-context';
-import { SquircleCard } from '../squircle-card';
+import { SquircleCard, SquircleView, SquirclePressable } from '../squircle-card';
 
 export function Toaster({ toasts, colors, offset, onDismiss }: TToasterProps) {
   const insets = useSafeAreaInsets();
@@ -16,24 +16,24 @@ export function Toaster({ toasts, colors, offset, onDismiss }: TToasterProps) {
   const bottomToasts = toasts.filter((item) => item.position === 'bottom');
 
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <View
+    <SquircleView pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <SquircleView
         pointerEvents="box-none"
         style={[styles.viewport, styles.topViewport, { paddingTop: insets.top + 12 }]}
       >
         {topToasts.map((item) => (
           <ToastItem key={item.id} toast={item} colors={colors} textStyle={textStyle} onDismiss={onDismiss} />
         ))}
-      </View>
-      <View
+      </SquircleView>
+      <SquircleView
         pointerEvents="box-none"
         style={[styles.viewport, styles.bottomViewport, { paddingBottom: insets.bottom + offset }]}
       >
         {bottomToasts.map((item) => (
           <ToastItem key={item.id} toast={item} colors={colors} textStyle={textStyle} onDismiss={onDismiss} />
         ))}
-      </View>
-    </View>
+      </SquircleView>
+    </SquircleView>
   );
 }
 
@@ -65,11 +65,11 @@ function ToastItem({
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
     >
-      <SquircleCard exactSquircle pointerEvents="none" style={[StyleSheet.absoluteFill, styles.toastSurface, { backgroundColor: colors.surface, borderColor: colors.border }]} />
-      <View style={[styles.icon, { backgroundColor: variant.tint }]} accessible={false}>
+      <SquircleCard pointerEvents="none" style={[StyleSheet.absoluteFill, styles.toastSurface, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+      <SquircleView style={[styles.icon, { backgroundColor: variant.tint }]} accessible={false}>
           <Text style={[styles.iconText, { color: variant.accent }, textStyle]}>{variant.glyph}</Text>
-      </View>
-      <View style={styles.copy}>
+      </SquircleView>
+      <SquircleView style={styles.copy}>
         <Text style={[styles.title, { color: colors.text }, textStyle]} >
           {toast.title}
         </Text>
@@ -78,9 +78,9 @@ function ToastItem({
             {toast.description}
           </Text>
         ) : null}
-      </View>
+      </SquircleView>
       {toast.action ? (
-        <Pressable
+        <SquirclePressable
           accessibilityRole="button"
           accessibilityLabel={toast.action.label}
           hitSlop={8}
@@ -91,9 +91,9 @@ function ToastItem({
           style={[styles.action, { backgroundColor: variant.tint }]}
         >
           <Text style={[styles.actionText, { color: variant.accent }, textStyle]}>{toast.action.label}</Text>
-        </Pressable>
+        </SquirclePressable>
       ) : null}
-      <Pressable
+      <SquirclePressable
         accessibilityRole="button"
         accessibilityLabel="Dismiss notification"
         hitSlop={8}
@@ -101,7 +101,7 @@ function ToastItem({
         style={[styles.close, { backgroundColor: variant.tint }]}
       >
         <Text style={[styles.closeText, { color: colors.close }, textStyle]}>×</Text>
-      </Pressable>
+      </SquirclePressable>
     </Animated.View>
   );
 }

@@ -47,22 +47,28 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export const Radius = {
   small: 12,
   control: 16,
+  input: 15,
   card: 28,
-  cardLarge: 32,
-  hero: 36,
-  panel: 40,
+  cardLarge: 28,
+  hero: 28,
+  panel: 28,
   pill: 999,
 } as const;
 
-const radiusScale = [8, Radius.small, Radius.control, Radius.card, Radius.cardLarge, Radius.hero, Radius.panel] as const;
+export const SplashLogoCornerRadiusRatio = 0.22;
+
+const radiusScale = [8, Radius.small, Radius.input, Radius.control, Radius.card, Radius.cardLarge, Radius.hero, Radius.panel] as const;
 
 export function normalizeCornerRadius(radius: number) {
   if (radius < 8 || radius >= Radius.pill) return radius;
 
-  return radiusScale.reduce((closest, candidate) =>
-    Math.abs(candidate - radius) <= Math.abs(closest - radius) ? candidate : closest,
+  const closest = radiusScale.reduce((current, candidate) =>
+    Math.abs(candidate - radius) <= Math.abs(current - radius) ? candidate : current,
   radiusScale[0]);
+  return Math.max(8, closest - 1);
 }
+
+export const ControlCornerRadius = normalizeCornerRadius(Radius.control);
 
 export const colorWithOpacity = (color: string, opacity: number) => {
   if (/^#[\da-f]{6}$/i.test(color)) {

@@ -19,7 +19,7 @@ function applyDesignCorners<T>(value: T): T {
     const height = numericDimension(source.height);
     const isCircle = width != null && width === height && radius >= width / 2;
     const isPill = radius >= 99;
-    const keepCircular = source.borderCurve === 'circular' || isCircle || isPill;
+    const keepCircular = isCircle;
 
     if (isPill) {
       result.borderRadius = Radius.pill;

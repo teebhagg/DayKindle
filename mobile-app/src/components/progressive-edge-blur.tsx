@@ -23,6 +23,8 @@ export type ProgressiveEdgeBlurProps = {
   scrollFallback?: ProgressiveBlurViewProps['scrollFallback'];
   /** Render the directional color fade without applying a native blur. */
   gradientOnly?: boolean;
+  /** Point in the accessible top fallback fade (0..1) where the gradient starts to soften. */
+  topFadeStart?: number;
   /** Put the transparent end of a vertical fade on the named display edge. */
   fadeToTransparentAtEdge?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -30,9 +32,21 @@ export type ProgressiveEdgeBlurProps = {
 
 const TOP_EDGE_HEIGHT = DEFAULT_TOP_HEADER_GRADIENT_HEIGHT;
 const TOP_FADE_STOPS = [
-  [0, 1], [0.125, 0.985], [0.25, 0.955], [0.375, 0.91], [0.5, 0.84],
-  [0.625, 0.73], [0.75, 0.57], [0.875, 0.33], [1, 0],
+  // Keep the compact title on an opaque surface, then fade scrolled content
+  // away below it. This prevents Android text from showing through the header.
+  [0, 1], [0.125, 1], [0.25, 1], [0.375, 1], [0.5, 1], [0.625, 1],
+  [0.75, 0.98], [0.8, 0.9], [0.85, 0.76], [0.9, 0.56], [0.95, 0.3], [1, 0],
 ] as const;
+// Android headers begin with 90% white beneath the status bar. Screens with
+// sticky filters hold that wash through the filter stack, then fade in the tail.
+const ANDROID_TOP_FADE_CURVE = [[0, 0.9], [0.125, 0.87], [0.25, 0.79], [0.375, 0.68], [0.5, 0.54], [0.625, 0.38], [0.75, 0.22], [0.875, 0.08], [1, 0]] as const;
+
+function androidTopFadeStops(fadeStart = 0) {
+  const start = Math.max(0, Math.min(0.98, fadeStart));
+  if (start === 0) return ANDROID_TOP_FADE_CURVE;
+  const tail = ANDROID_TOP_FADE_CURVE.slice(1).map(([position, opacity]) => [start + (1 - start) * position, opacity] as const);
+  return [[0, 0.9], [start, 0.9], ...tail] as const;
+}
 const SIDE_FADE_STOPS = TOP_FADE_STOPS;
 // Smoothstep opacity stops keep color from snapping into view at the edge.
 const BOTTOM_FADE_STOPS = [1, 0.957, 0.844, 0.684, 0.5, 0.316, 0.156, 0.043, 0].map((opacity, index) => [index * 0.125, opacity] as const);
@@ -150,12 +164,24 @@ function withTintOpacity(color: string): ColorValue {
   return color;
 }
 
-export function ProgressiveEdgeBlur({ edge, surfaceColor, tintColor, tint, intensity, startOffset, scrollProgress, revealDistance, revealScrollDistance, scrollFallback, gradientOnly = false, fadeToTransparentAtEdge = false, style }: ProgressiveEdgeBlurProps) {
+export function ProgressiveEdgeBlur({ edge, surfaceColor, tintColor, tint, intensity, startOffset, scrollProgress, revealDistance, revealScrollDistance, scrollFallback, gradientOnly = false, topFadeStart, fadeToTransparentAtEdge = false, style }: ProgressiveEdgeBlurProps) {
   const reduceTransparency = useReduceTransparency();
   const insets = useSafeAreaInsets();
   const gradientId = `progressive-edge-fade-${useId().replace(/:/g, '')}`;
   const defaultIntensity = edge === 'top' ? 72 : edge === 'bottom' ? 32 : 52;
   const blurIntensity = Math.max(0, Math.min(100, Math.round(intensity ?? defaultIntensity)));
+  const customTopFadeStops = topFadeStart === undefined ? TOP_FADE_STOPS : (() => {
+    const start = Math.max(0, Math.min(0.98, topFadeStart));
+    const span = 1 - start;
+    return [
+      [0, 1], [start, 1], [start + span * 0.25, 0.957], [start + span * 0.5, 0.844],
+      [start + span * 0.75, 0.684], [start + span * 0.875, 0.5], [1, 0],
+    ] as const;
+  })();
+  const gradientStops = edge === 'bottom' ? BOTTOM_FADE_STOPS : edge === 'top'
+    ? Platform.OS === 'android' ? androidTopFadeStops(topFadeStart) : customTopFadeStops
+    : SIDE_FADE_STOPS;
+  const gradientSurfaceColor = Platform.OS === 'android' && edge === 'top' ? '#FFFFFF' : surfaceColor;
   // Callers can align the intensity ramp with another animation, such as the
   // expanded-to-compact header transition.
   const scrollRevealDistance = revealScrollDistance ?? Math.max(1, revealDistance ?? TOP_EDGE_HEIGHT);
@@ -166,13 +192,13 @@ export function ProgressiveEdgeBlur({ edge, surfaceColor, tintColor, tint, inten
   }), [edge, scrollProgress, scrollRevealDistance]);
 
   return (
-    <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={[edgeStyles[edge], edge === 'bottom' && { height: 40 + insets.bottom, opacity: 0.95 }, style]}>
+    <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={[edgeStyles[edge], edge === 'bottom' && { height: 40 + insets.bottom, opacity: 0.95 }, style, Platform.OS === 'android' && edge === 'top' ? { opacity: 1 } : null]}>
       {gradientOnly || reduceTransparency || (Platform.OS === 'android' && (edge === 'top' || edge === 'bottom')) ? (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, accessibleFallbackStyle]}>
           <Svg pointerEvents="none" style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
             <Defs>
-                <LinearGradient id={gradientId} {...gradientDirection(edge, fadeToTransparentAtEdge)}>
-                {(edge === 'bottom' ? BOTTOM_FADE_STOPS : edge === 'top' ? TOP_FADE_STOPS : SIDE_FADE_STOPS).map(([position, opacity], index) => <Stop key={index} offset={`${position * 100}%`} stopColor={surfaceColor} stopOpacity={opacity} />)}
+              <LinearGradient id={gradientId} {...gradientDirection(edge, fadeToTransparentAtEdge)}>
+                {gradientStops.map(([position, opacity], index) => <Stop key={index} offset={`${position * 100}%`} stopColor={gradientSurfaceColor} stopOpacity={opacity} />)}
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100" height="100" fill={`url(#${gradientId})`} />

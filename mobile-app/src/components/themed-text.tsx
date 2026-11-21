@@ -1,9 +1,9 @@
-import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
+import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useContext } from 'react';
-import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle, VisualStyleContext } from '../features/home/visual-style-context';
+import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, headingFontFamilyForVisualStyle, textStyleForVisualStyle, VisualStyleContext } from '../features/home/visual-style-context';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -45,6 +45,12 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         style,
         scaledTypography,
         textStyleForVisualStyle(visualStyle),
+        {
+          ...(type === 'title' || type === 'subtitle'
+            ? { fontFamily: headingFontFamilyForVisualStyle(visualStyle) }
+            : {}),
+          fontWeight: type === 'title' || type === 'subtitle' ? 600 : visualStyle === 'expressive' ? 400 : 200,
+        },
       ]}
       {...rest}
     />
@@ -55,17 +61,17 @@ const styles = StyleSheet.create({
   small: {
     fontSize: 15.4,
     lineHeight: 22,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   smallBold: {
     fontSize: 15.4,
     lineHeight: 22,
-    fontWeight: 700,
+    fontWeight: 400,
   },
   default: {
     fontSize: 17.6,
     lineHeight: 26.4,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   title: {
     fontSize: 52.8,
@@ -87,7 +93,7 @@ const styles = StyleSheet.create({
 
   },
   code: {
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
+    fontWeight: 400,
     fontSize: 13.2,
   },
 });

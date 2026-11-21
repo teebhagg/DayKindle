@@ -72,7 +72,7 @@ export function createToastStyles(colors: TToastColors) {
       fontFamily: 'Satoshi',
       fontSize: 17,
       lineHeight: 21,
-      fontWeight: '700',
+      fontWeight: '400',
     },
     copy: {
       flex: 1,
@@ -83,7 +83,7 @@ export function createToastStyles(colors: TToastColors) {
       fontFamily: 'Satoshi',
       fontSize: 13.5,
       lineHeight: 18,
-      fontWeight: '700',
+      fontWeight: '400',
     },
     description: {
       fontFamily: 'Satoshi',
@@ -100,7 +100,7 @@ export function createToastStyles(colors: TToastColors) {
     actionText: {
       fontFamily: 'Satoshi',
       fontSize: 12,
-      fontWeight: '700',
+      fontWeight: '400',
     },
     close: {
       width: 44,
