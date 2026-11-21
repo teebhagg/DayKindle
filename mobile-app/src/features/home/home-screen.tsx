@@ -203,6 +203,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   const hasSyncConsent = Boolean(account.user && onboarding?.syncConsent && onboarding.syncConsentUserId === account.user.id);
   const [syncRecoverySnapshots, setSyncRecoverySnapshots] = useState<RecoverySnapshot[]>([]);
   const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
+  const reduceMotion = useReducedMotion();
   // The selected indicator glides between tab slots, measured from the bar's width.
   const [tabBarWidth, setTabBarWidth] = useState(0);
   const tabSlotWidth = tabBarWidth > 0 ? (tabBarWidth - TAB_BAR_PADDING * 2) / tabs.length : 0;
@@ -326,7 +327,6 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
     : insets.bottom + LayoutSpacing.section;
   // iOS keeps the two actions side by side (stretched) unless the screen is very narrow, matching Android.
   const stackRecommendationActions = Platform.OS === 'ios' ? windowWidth < 330 : windowWidth < 364 || fontScale > 1.15;
-  const reduceMotion = useReducedMotion();
   useEffect(() => {
     let active = true;
     const userId = account.user?.id;
