@@ -1,6 +1,6 @@
 # Onboarding and profile — current state
 
-**Reviewed:** 2026-11-13
+**Reviewed:** 2026-11-21
 **Status:** Source-reviewed in the current working tree, which includes uncommitted changes. No onboarding run, fresh install, or Profile action was exercised on a device in this pass.
 **Evidence labels:** **Verified** (read in source), **Inferred** (reasoned from source, not measured), **Needs Validation** (needs a device, deployment, or provider check), **Not found** (absent from the reviewed source).
 
@@ -23,7 +23,7 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 | 3. Appearance | "Choose a look for DayKindle, or keep the refined default." Refined (`formal`) or Expressive | **Verified** | `visualStyle` state; preview card "Your day, in focus." |
 | 4. Optional routine | "Would a simple rhythm help?" — the Daily Plan from the server catalog, or "No routine for now" | **Verified** | `routineTemplateId`; `useDailyPlanTemplates()`. |
 | Finish | "Start my day" seeds the session, waits for the local save, sends `onboarding_completed`, opens Today with "Your planner is ready" | **Verified** | `next()` at step 4 → `seedHomeSession()` → `confirmLocalSave()`. |
-| Skip | "Skip account setup and start as a guest" starts a fresh guest workspace (earlier data archived) | **Verified** | `skipAccountSetup()` → `startFreshGuestData()`. |
+| Skip (removed) | The duplicate "Use Guest" skip on the account screen was removed. "Continue as Guest" is the only guest path and continues into setup. Account screen has a back button to the intro. | **Verified** (source, 2026-11-21; not run on a device) | `welcome-auth-screen.tsx`, `index.tsx`. Planned: none. |
 
 **Profile tab (Verified, `home-screen.tsx` profile section):**
 
@@ -51,7 +51,8 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 - **Nothing is required (Verified):** areas, starter goal, look and routine can all be skipped. "Choose an area above to see a matching goal. You can also skip both."
 - **One starter goal (Verified):** selecting a second replaces the first. The goal keeps the template id as its `id`, its "first step" text, and its area.
 - **Seeding (Verified):** `seedHomeSession()` replaces entries, definitions and progress events with empty lists, builds all 15 life areas with the chosen ones enabled, and sets `selectedDate` to today.
-- **Consent (Verified):** stored only with the current user's id; Guest and skip paths clear it.
+- **Consent (Verified):** stored only with the current user's id; the Guest path clears it.
+- **Fresh workspace (Verified):** `startFreshGuestData()` now resets to a clean planner with onboarding not completed, so the next launch shows setup. It is used by the "Start fresh on this device" recovery action, which archives earlier data first.
 - **Returning account (Verified):** found when a non-deleted `settings/onboardingCompleted` row is `true`, a `settings/onboarding` object exists, or a legacy snapshot row exists. Existing consent is kept only if it belongs to the same user.
 
 ## 6. Loading, empty, success, error and offline states

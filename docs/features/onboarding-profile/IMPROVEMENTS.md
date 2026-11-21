@@ -1,6 +1,6 @@
 # Onboarding and profile — improvements
 
-**Reviewed:** 2026-11-13
+**Reviewed:** 2026-11-21
 **Status:** Proposals. Nothing here is implemented. The [implementation plan](IMPLEMENTATION_PLAN.md) orders the selected items.
 **Evidence basis:** [current state](CURRENT_STATE.md) and the source paths it lists.
 
@@ -11,7 +11,7 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 ### A1. Verify onboarding on real devices — P1, M
 
 - **Evidence:** **Needs Validation** — no fresh install, provider sheet return or cancel, or returning-account run has been recorded (full-scale audit, open item 6).
-- **Approach:** scripted manual run on iOS and Android for Guest, Google, Apple, cancel at each sheet, returning account, offline Guest, and "Skip account setup". Record device, OS and build in `docs/audits/`.
+- **Approach:** scripted manual run on iOS and Android for Guest, Google, Apple, cancel at each sheet, returning account, offline Guest, and "Start fresh on this device" from the recovery screen. Record device, OS and build in `docs/audits/`.
 
 ### A2. Give the returning-account check an offline escape — P2, S
 
