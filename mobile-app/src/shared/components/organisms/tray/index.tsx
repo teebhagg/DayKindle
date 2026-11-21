@@ -1,3 +1,4 @@
+import { SquircleView, SquirclePressable, AnimatedSquircleView } from '@/components/squircle-card';
 // @ts-check
 // Reanimated requires SharedValue mutations inside worklets and synchronization effects.
 /* eslint-disable react-hooks/immutability, react-hooks/refs, react-hooks/set-state-in-effect */
@@ -19,7 +20,6 @@ import {
   StyleSheet,
   Text,
   useWindowDimensions,
-  View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -442,7 +442,7 @@ const TrayTrigger: React.FC<ITrayTrigger> &
 }: ITrayTrigger): React.JSX.Element => {
   const { open, palette } = useTrayContext("Tray.Trigger");
   return (
-    <Pressable
+    <SquirclePressable
       accessibilityRole="button"
       onPress={() => open(view)}
       style={style}
@@ -450,7 +450,7 @@ const TrayTrigger: React.FC<ITrayTrigger> &
       <TrayTintContext.Provider value={palette.text}>
         {children}
       </TrayTintContext.Provider>
-    </Pressable>
+    </SquirclePressable>
   );
 };
 
@@ -515,7 +515,7 @@ const TrayContent: React.FC<ITrayContent> &
       animationType="none"
       onRequestClose={close}
     >
-      <View style={styles.fill} pointerEvents="box-none">
+      <SquircleView style={styles.fill} pointerEvents="box-none">
         <AnimatedPressable
           style={[
             styles.backdrop,
@@ -525,12 +525,12 @@ const TrayContent: React.FC<ITrayContent> &
           onPress={dismissOnBackdropPress ? close : undefined}
         />
 
-        <View
+        <SquircleView
           style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
           pointerEvents="box-none"
         >
           <GestureDetector gesture={pan}>
-            <Animated.View
+            <AnimatedSquircleView
               style={[
                 styles.sheet,
                 {
@@ -542,23 +542,23 @@ const TrayContent: React.FC<ITrayContent> &
                 style,
               ]}
             >
-              <Animated.View style={[styles.clip, heightStyle]}>
-                <View style={styles.measure} onLayout={onContentLayout}>
-                  <View style={styles.handleArea}>
-                    <View
+              <AnimatedSquircleView style={[styles.clip, heightStyle]}>
+                <SquircleView style={styles.measure} onLayout={onContentLayout}>
+                  <SquircleView style={styles.handleArea}>
+                    <SquircleView
                       style={[
                         styles.handle,
                         { backgroundColor: palette.handle },
                       ]}
                     />
-                  </View>
+                  </SquircleView>
                   {children}
-                </View>
-              </Animated.View>
-            </Animated.View>
+                </SquircleView>
+              </AnimatedSquircleView>
+            </AnimatedSquircleView>
           </GestureDetector>
-        </View>
-      </View>
+        </SquircleView>
+      </SquircleView>
     </Modal>
   );
 };
@@ -621,7 +621,7 @@ const TrayView: React.FC<ITrayView> & React.FunctionComponent<ITrayView> = ({
   if (!rendered) return null;
 
   return (
-    <Animated.View
+    <AnimatedSquircleView
       pointerEvents={active ? "auto" : "none"}
       style={[
         active ? styles.activeLayer : styles.idleLayer,
@@ -630,7 +630,7 @@ const TrayView: React.FC<ITrayView> & React.FunctionComponent<ITrayView> = ({
       ]}
     >
       {children}
-    </Animated.View>
+    </AnimatedSquircleView>
   );
 };
 
@@ -639,7 +639,7 @@ const TrayHeader: React.FC<ITrayHeader> &
   children,
   style,
 }: ITrayHeader): React.JSX.Element => (
-  <View style={[styles.header, style]}>{children}</View>
+  <SquircleView style={[styles.header, style]}>{children}</SquircleView>
 );
 
 const TrayTitle: React.FC<ITrayTitle> & React.FunctionComponent<ITrayTitle> = ({
@@ -671,7 +671,7 @@ const TrayBody: React.FC<ITrayBody> & React.FunctionComponent<ITrayBody> = ({
   children,
   style,
 }: ITrayBody): React.JSX.Element => (
-  <View style={[styles.body, style]}>{children}</View>
+  <SquircleView style={[styles.body, style]}>{children}</SquircleView>
 );
 
 const TrayFooter: React.FC<ITrayFooter> &
@@ -681,9 +681,9 @@ const TrayFooter: React.FC<ITrayFooter> &
 }: ITrayFooter): React.JSX.Element => {
   const { palette } = useTrayContext("Tray.Footer");
   return (
-    <View style={[styles.footer, { borderTopColor: palette.border }, style]}>
+    <SquircleView style={[styles.footer, { borderTopColor: palette.border }, style]}>
       {children}
-    </View>
+    </SquircleView>
   );
 };
 
@@ -697,7 +697,7 @@ const TrayClose: React.FC<ITrayClose> & React.FunctionComponent<ITrayClose> = ({
     typeof children === "function" ? children(state) : (children ?? null);
 
   return (
-    <Pressable
+    <SquirclePressable
       accessibilityRole="button"
       accessibilityLabel="Close"
       hitSlop={12}
@@ -709,7 +709,7 @@ const TrayClose: React.FC<ITrayClose> & React.FunctionComponent<ITrayClose> = ({
           <Text style={[styles.glyph, { color: palette.mutedText }]}>✕</Text>
         )}
       </TrayTintContext.Provider>
-    </Pressable>
+    </SquirclePressable>
   );
 };
 
@@ -725,7 +725,7 @@ const TrayBack: React.FC<ITrayBack> & React.FunctionComponent<ITrayBack> = ({
     typeof children === "function" ? children(state) : (children ?? null);
 
   return (
-    <Pressable
+    <SquirclePressable
       accessibilityRole="button"
       accessibilityLabel="Back"
       hitSlop={12}
@@ -737,7 +737,7 @@ const TrayBack: React.FC<ITrayBack> & React.FunctionComponent<ITrayBack> = ({
           <Text style={[styles.glyph, { color: palette.mutedText }]}>‹</Text>
         )}
       </TrayTintContext.Provider>
-    </Pressable>
+    </SquirclePressable>
   );
 };
 
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 10,
   },
-  glyph: { fontSize: 18, fontWeight: "600" },
+  glyph: { fontSize: 18, fontWeight: "400" },
 });
 
 const Tray = createCompoundComponent("Tray", memo(TrayRoot), {

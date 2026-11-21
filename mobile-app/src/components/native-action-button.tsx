@@ -1,8 +1,9 @@
 import { useTheme } from '@/hooks/use-theme';
 import { Radius } from '@/constants/theme';
 import { useContext } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { NativeActionButtonProps } from './native-action-button.types';
+import { SquirclePressable, SquircleView } from './squircle-card';
 import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, textStyleForVisualStyle, VisualStyleContext } from '../features/home/visual-style-context';
 
 export default function NativeActionButton({
@@ -23,13 +24,14 @@ export default function NativeActionButton({
   const flattenedStyle = StyleSheet.flatten(style);
   const minimumHeight = typeof flattenedStyle?.height === 'number' ? flattenedStyle.height : typeof flattenedStyle?.minHeight === 'number' ? flattenedStyle.minHeight : 44;
   return (
-    <Pressable
+    <SquirclePressable
+      nativePill
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
-        { minHeight: 44, paddingHorizontal: 12, borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: appearance === 'prominent' ? theme.green : undefined },
+        { minHeight: 44, paddingHorizontal: 12, borderRadius: Radius.pill, backgroundColor: appearance === 'prominent' ? theme.green : undefined },
         style,
-        { borderRadius: Radius.pill, borderCurve: 'circular' },
+        { borderRadius: Radius.pill },
         { height: undefined, minHeight: Math.max(44, minimumHeight) },
         pressed && { backgroundColor: appearance === 'prominent' ? theme.actionPressed : theme.pressed },
         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -41,7 +43,7 @@ export default function NativeActionButton({
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
     >
-      {children ?? <View><Text style={[{ color: labelColor ?? (appearance === 'prominent' ? theme.onAccent : tintColor ?? theme.green), fontSize: visualStyle === 'expressive' ? 14 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : undefined }, textStyleForVisualStyle(visualStyle)]}>{label}</Text></View>}
-    </Pressable>
+      {children ?? <SquircleView><Text style={[{ color: labelColor ?? (appearance === 'prominent' ? theme.onAccent : tintColor ?? theme.green), fontSize: visualStyle === 'expressive' ? 14 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : undefined }, textStyleForVisualStyle(visualStyle)]}>{label}</Text></SquircleView>}
+    </SquirclePressable>
   );
 }

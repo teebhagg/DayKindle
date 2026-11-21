@@ -1,3 +1,4 @@
+import { SquircleView, AnimatedSquircleView } from '@/components/squircle-card';
 import { useTheme } from '@/hooks/use-theme';
 // @ts-check
 import React, {
@@ -9,16 +10,9 @@ import React, {
   useState,
   useContext,
 } from "react";
-import {
-  LayoutChangeEvent,
-  StyleSheet,
-  Text,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { LayoutChangeEvent, StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
+import {
   useAnimatedReaction,
   useAnimatedStyle,
   useFrameCallback,
@@ -118,7 +112,7 @@ const MaskedTabBarRoot: React.FC<IMaskedTabBarRoot> &
   gap = DEFAULT_GAP,
   iconSize = DEFAULT_ICON_SIZE,
   fontSize = DEFAULT_FONT_SIZE,
-  fontWeight = "600",
+  fontWeight = "400",
   draggable = true,
   style,
 }: IMaskedTabBarRoot): React.JSX.Element => {
@@ -248,7 +242,7 @@ const MaskedTabBarRoot: React.FC<IMaskedTabBarRoot> &
 
   return (
     <MaskedTabBarContext.Provider value={ctx}>
-      <View
+      <SquircleView
         accessibilityRole="radiogroup"
         accessibilityLabel={accessibilityLabel}
         style={[
@@ -263,7 +257,7 @@ const MaskedTabBarRoot: React.FC<IMaskedTabBarRoot> &
         ]}
       >
         {children}
-      </View>
+      </SquircleView>
     </MaskedTabBarContext.Provider>
   );
 };
@@ -432,12 +426,12 @@ const MaskedTabBarList: React.FC<IMaskedTabBarList> &
 
   return (
     <GestureDetector gesture={gesture}>
-      <View style={[styles.list, style]} onLayout={onLayout}>
+      <SquircleView style={[styles.list, style]} onLayout={onLayout}>
         <MaskedTabLayerContext.Provider value="base">
-          <View style={[styles.row, rowStyle]}>{children}</View>
+          <SquircleView style={[styles.row, rowStyle]}>{children}</SquircleView>
         </MaskedTabLayerContext.Provider>
 
-        <Animated.View
+        <AnimatedSquircleView
           pointerEvents="none"
           style={[
             styles.clip,
@@ -448,15 +442,15 @@ const MaskedTabBarList: React.FC<IMaskedTabBarList> &
             clipStyle,
           ]}
         >
-          <Animated.View
+          <AnimatedSquircleView
             style={[styles.row, rowStyle, { width: listWidth }, innerStyle]}
           >
             <MaskedTabLayerContext.Provider value="active">
               {children}
             </MaskedTabLayerContext.Provider>
-          </Animated.View>
-        </Animated.View>
-      </View>
+          </AnimatedSquircleView>
+        </AnimatedSquircleView>
+      </SquircleView>
     </GestureDetector>
   );
 };
@@ -483,7 +477,7 @@ const MaskedTabBarTrigger: React.FC<IMaskedTabBarTrigger> &
   );
 
   return (
-    <View
+    <SquircleView
       accessible={layer === "base"}
       accessibilityElementsHidden={layer === "active"}
       importantForAccessibility={layer === "active" ? "no-hide-descendants" : "auto"}
@@ -497,7 +491,7 @@ const MaskedTabBarTrigger: React.FC<IMaskedTabBarTrigger> &
       style={[styles.trigger, disabled ? styles.disabled : null, style]}
     >
       {children}
-    </View>
+    </SquircleView>
   );
 };
 
@@ -550,7 +544,7 @@ const MaskedTabBarIcon: React.FC<IMaskedTabBarIcon> &
       : children;
 
   return (
-    <View
+    <SquircleView
       style={[
         styles.icon,
         { width: resolvedSize, height: resolvedSize },
@@ -558,7 +552,7 @@ const MaskedTabBarIcon: React.FC<IMaskedTabBarIcon> &
       ]}
     >
       {content}
-    </View>
+    </SquircleView>
   );
 };
 

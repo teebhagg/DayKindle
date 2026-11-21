@@ -1,59 +1,32 @@
 import { useTheme } from '@/hooks/use-theme';
-import { Children, isValidElement, useContext, type ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
-import { Button, HStack, Host, RNHostView, Spacer, Text } from '@expo/ui/swift-ui';
+import { StyleSheet, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Button, Host } from '@expo/ui/swift-ui';
+import type { SFSymbol } from 'sf-symbols-typescript';
 import {
   accessibilityHint,
   accessibilityLabel,
-  background,
   buttonBorderShape,
   buttonStyle,
   controlSize,
   contentShape,
   disabled as nativeDisabled,
-  font,
-  foregroundStyle,
   frame,
+  font,
+  labelStyle,
+  padding,
   tint,
   shapes,
 } from '@expo/ui/swift-ui/modifiers';
+import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, nativeFontFamilyForVisualStyle, VisualStyleContext } from '../features/home/visual-style-context';
+import { useContext } from 'react';
 import type { NativeActionButtonProps } from './native-action-button.types';
-import { AppIcon, type AppIconName } from './app-icon';
-import {
-  EXPRESSIVE_FONT_SIZE_MULTIPLIER,
-  fontFamilyForVisualStyle,
-  VisualStyleContext,
-} from '../features/home/visual-style-context';
-
-const buttonIconNames: Record<string, AppIconName> = {
-  'arrow.clockwise': 'refresh',
-  'arrow.right': 'arrow',
-  'bell.badge': 'notification',
-  calendar: 'calendar',
-  'calendar.badge.clock': 'calendar',
-  checkmark: 'check',
-  'chevron.left': 'back',
-  minus: 'minus',
-  plus: 'add',
-  trash: 'delete',
-  xmark: 'close',
-};
 
 const numberValue = (value: unknown): number | undefined =>
   typeof value === 'number' ? value : undefined;
 
-function containsAppIcon(node: ReactNode): boolean {
-  return Children.toArray(node).some((child) => {
-    if (!isValidElement(child)) return false;
-    if (child.type === AppIcon) return true;
-    return containsAppIcon((child.props as { children?: ReactNode }).children);
-  });
-}
-
 export default function NativeActionButton({
   label,
   systemImage,
-  iconPlacement = 'trailing',
   onPress,
   disabled = false,
   accessibilityLabel: accessibleLabel,
@@ -61,182 +34,113 @@ export default function NativeActionButton({
   width = 'content',
   appearance = 'prominent',
   tintColor,
-  labelColor,
   labelFontSize,
   nativeHeight = false,
+  iosHeaderStyle,
   style,
-  children,
 }: NativeActionButtonProps) {
   const palette = useTheme();
-  const { fontScale } = useWindowDimensions();
-  tintColor ??= palette.green;
   const visualStyle = useContext(VisualStyleContext);
-  const selectedFontFamily = fontFamilyForVisualStyle(visualStyle);
-  const layout = StyleSheet.flatten(style) ?? {};
+  const { fontScale } = useWindowDimensions();
+  tintColor ??= appearance === 'destructive' ? palette.error : palette.green;
+  const layout = StyleSheet.flatten(style) as ViewStyle | undefined;
   const fullWidth = width === 'full';
-  const foregroundColor = labelColor ?? (appearance === 'prominent' ? palette.onAccent : tintColor);
-  const defaultLabelFontSize = appearance === 'prominent' ? 15.4 : appearance === 'plain' ? 13.2 : 12.1;
-  const selectedLabelFontSize = labelFontSize ?? defaultLabelFontSize;
-  const expressiveFontScale = 1.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER;
-  const customContentHasIcon = containsAppIcon(children);
-  const fixedContentWidth = !fullWidth ? numberValue(layout.width) : undefined;
-  const flexibleWidth = (numberValue(layout.flex) ?? 0) > 0;
-  // A full-width native button still needs SwiftUI spacers when its RN wrapper
-  // is flexed; without them the Host fills the row while the button content
-  // keeps its intrinsic width and clips the label during footer transitions.
+  const fixedContentWidth = !fullWidth ? numberValue(layout?.width) : undefined;
+  const flexibleWidth = (numberValue(layout?.flex) ?? 0) > 0;
   const fillsParentWidth = fullWidth;
-  const minWidth = numberValue(layout.minWidth);
-  const maxWidth = numberValue(layout.maxWidth);
-  const requestedHeight = numberValue(layout.height);
-  const minimumHeight = nativeHeight ? undefined : numberValue(layout.minHeight) ?? (appearance === 'plain' ? 44 : 50);
-  const buttonHeight = nativeHeight
+  const minWidth = numberValue(layout?.minWidth);
+  const maxWidth = numberValue(layout?.maxWidth);
+  const requestedHeight = numberValue(layout?.height);
+  const minimumHeight = nativeHeight ? undefined : numberValue(layout?.minHeight) ?? (appearance === 'plain' ? 44 : 50);
+  const buttonHeight = iosHeaderStyle === 'back'
+    ? 44
+    : nativeHeight
     ? undefined
     : Math.max(44, requestedHeight ?? 0, minimumHeight ?? 0) * Math.max(1, fontScale);
-  const nativeButtonStyle = appearance === 'prominent'
+  const nativeButtonStyle = iosHeaderStyle
+    ? 'plain'
+    : appearance === 'prominent'
     ? 'borderedProminent'
-    : appearance === 'bordered'
+    : appearance === 'bordered' || appearance === 'secondary' || appearance === 'destructive'
       ? 'bordered'
       : 'plain';
+  const accessibleName = accessibleLabel?.toLowerCase() ?? '';
+  const isCloseButton = !label && !systemImage && accessibleName.startsWith('close');
+  const fallbackIsBack = accessibleName.includes('previous introduction screen');
+  const fallbackIsWelcome = accessibleName.includes('return to welcome screen');
+  const fallbackLabel = label || (
+    accessibleLabel === 'Skip this step' ? 'Skip' :
+      fallbackIsBack ? 'Back' :
+        fallbackIsWelcome ? 'Close' : undefined
+  );
+  const nativeLabel = iosHeaderStyle === 'back' ? '' : fallbackLabel;
+  const nativeSystemImage = systemImage ?? (
+    fallbackIsBack ? 'chevron.left' :
+      fallbackIsWelcome || (iosHeaderStyle === 'back' && accessibleName.startsWith('close')) ? 'xmark' :
+        iosHeaderStyle === 'back' ? 'chevron.left' : undefined
+  );
+  const nativeFontSize = (labelFontSize ?? (appearance === 'prominent' ? 15.4 : appearance === 'plain' ? 13.2 : 14))
+    * (visualStyle === 'expressive' ? EXPRESSIVE_FONT_SIZE_MULTIPLIER : 1);
 
   const hostStyle: ViewStyle = {
-    alignSelf: fullWidth || flexibleWidth ? 'stretch' : 'center',
-    width: fillsParentWidth ? '100%' : fixedContentWidth,
-    flex: flexibleWidth ? layout.flex : undefined,
-    flexGrow: flexibleWidth ? layout.flexGrow : undefined,
-    flexShrink: flexibleWidth ? layout.flexShrink : undefined,
+    // Header back buttons center on the bar's vertical midline so they line up with the screen title.
+    alignSelf: iosHeaderStyle === 'back' ? 'center' : fillsParentWidth || flexibleWidth ? 'stretch' : 'center',
+    width: iosHeaderStyle === 'back' ? 44 : fillsParentWidth ? '100%' : fixedContentWidth,
+    flex: flexibleWidth ? layout?.flex : undefined,
+    flexGrow: flexibleWidth ? layout?.flexGrow : undefined,
+    flexShrink: flexibleWidth ? layout?.flexShrink : undefined,
     minWidth,
     maxWidth,
-    minHeight: buttonHeight,
-    height: buttonHeight,
-    marginTop: layout.marginTop,
-    marginBottom: layout.marginBottom,
-    marginLeft: layout.marginLeft,
-    marginRight: layout.marginRight,
-    marginHorizontal: layout.marginHorizontal,
-    marginVertical: layout.marginVertical,
-    opacity: layout.opacity,
-    zIndex: layout.zIndex,
+    minHeight: iosHeaderStyle ? 44 : buttonHeight,
+    height: iosHeaderStyle === 'back' ? 44 : buttonHeight,
+    marginTop: layout?.marginTop,
+    marginBottom: layout?.marginBottom,
+    marginLeft: layout?.marginLeft,
+    marginRight: layout?.marginRight,
+    marginHorizontal: layout?.marginHorizontal,
+    marginVertical: layout?.marginVertical,
+    opacity: layout?.opacity,
+    zIndex: layout?.zIndex,
   };
 
   const modifiers = [
-    buttonStyle(nativeButtonStyle),
-    buttonBorderShape('capsule'),
-    controlSize(appearance === 'plain' ? 'regular' : 'large'),
+    // Header buttons use SwiftUI's Liquid Glass style (iOS 26+) instead of a custom fill and stroke.
+    buttonStyle(iosHeaderStyle ? 'glass' : nativeButtonStyle),
+    // Let SwiftUI choose the platform's native shape for each button style.
+    buttonBorderShape(iosHeaderStyle === 'back' ? 'circle' : iosHeaderStyle === 'action' ? 'capsule' : 'automatic'),
+    controlSize(iosHeaderStyle || appearance !== 'plain' ? 'large' : 'regular'),
     tint(tintColor),
-    nativeDisabled(disabled),
-    ...(accessibleLabel || label ? [accessibilityLabel(accessibleLabel ?? label)] : []),
-    ...(accessibleHint ? [accessibilityHint(accessibleHint)] : []),
     frame({
-      width: fixedContentWidth,
+      width: iosHeaderStyle === 'back' ? 44 : fixedContentWidth,
       minWidth,
-      maxWidth: fillsParentWidth ? 10000 : maxWidth,
-      minHeight: buttonHeight,
-      height: buttonHeight,
+      // Flexible buttons (flex in their style) stretch to their share of the row, like Android.
+      maxWidth: fillsParentWidth || flexibleWidth ? 10000 : maxWidth,
+      minHeight: iosHeaderStyle ? 44 : buttonHeight,
+      height: iosHeaderStyle === 'back' ? 44 : buttonHeight,
     }),
-    contentShape(shapes.rectangle()),
-    ...(appearance === 'custom' ? [background(tintColor, shapes.capsule())] : []),
+    // Icon-only header buttons: without this, SwiftUI reserves space for the empty title and shifts the glyph off-center.
+    ...(iosHeaderStyle === 'back' ? [labelStyle('iconOnly')] : []),
+    ...(iosHeaderStyle === 'action' ? [padding({ horizontal: 16, vertical: 8 })] : []),
+    font({ family: nativeFontFamilyForVisualStyle(visualStyle), size: nativeFontSize, weight: 'regular' }),
+    nativeDisabled(disabled),
+    ...(accessibleLabel || nativeLabel ? [accessibilityLabel(accessibleLabel ?? nativeLabel!)] : []),
+    ...(accessibleHint ? [accessibilityHint(accessibleHint)] : []),
+    contentShape(iosHeaderStyle === 'back' ? shapes.circle() : shapes.rectangle()),
   ];
 
   return (
     <Host
       style={hostStyle}
-      matchContents={{ horizontal: !fillsParentWidth && !flexibleWidth, vertical: nativeHeight }}
+      matchContents={{ horizontal: !fillsParentWidth && !flexibleWidth && fixedContentWidth == null, vertical: nativeHeight }}
+      ignoreSafeArea="container"
     >
-      <Button onPress={onPress} modifiers={modifiers}>
-        {children ? (
-          <HStack alignment="center" spacing={12} modifiers={[contentShape(shapes.rectangle())]}>
-            {fillsParentWidth ? <Spacer /> : null}
-            {systemImage && iconPlacement === 'leading' && !customContentHasIcon ? (
-              <RNHostView matchContents>
-                <View style={styles.iconSlot}>
-                  <AppIcon
-                    name={buttonIconNames[systemImage] ?? 'sparkle'}
-                    style={visualStyle}
-                    size={18}
-                    color={foregroundColor}
-                  />
-                </View>
-              </RNHostView>
-            ) : null}
-            <RNHostView matchContents>
-              <View style={styles.customContent}>{children}</View>
-            </RNHostView>
-            {systemImage && iconPlacement !== 'leading' && !customContentHasIcon ? (
-              <RNHostView matchContents>
-                <View style={styles.iconSlot}>
-                  <AppIcon
-                    name={buttonIconNames[systemImage] ?? 'sparkle'}
-                    style={visualStyle}
-                    size={18}
-                    color={foregroundColor}
-                  />
-                </View>
-              </RNHostView>
-            ) : null}
-            {fillsParentWidth ? <Spacer /> : null}
-          </HStack>
-        ) : (
-          <HStack alignment="center" spacing={12} modifiers={[contentShape(shapes.rectangle())]}>
-            {fillsParentWidth ? <Spacer /> : null}
-            {systemImage && iconPlacement === 'leading' ? (
-              <RNHostView matchContents>
-                <View style={styles.iconSlot}>
-                  <AppIcon
-                    name={buttonIconNames[systemImage] ?? 'sparkle'}
-                    style={visualStyle}
-                    size={18}
-                    color={foregroundColor}
-                  />
-                </View>
-              </RNHostView>
-            ) : null}
-            {label ? (
-              <Text
-                modifiers={[
-                  font({
-                    family: selectedFontFamily,
-                    size: visualStyle === 'expressive'
-                      ? selectedLabelFontSize * expressiveFontScale
-                      : selectedLabelFontSize,
-                    weight: visualStyle === 'expressive' ? 'regular' : 'semibold',
-                  }),
-                  foregroundStyle(foregroundColor),
-                ]}
-              >
-                {label}
-              </Text>
-            ) : null}
-            {systemImage && iconPlacement !== 'leading' ? (
-              <RNHostView matchContents>
-                <View style={styles.iconSlot}>
-                  <AppIcon
-                    name={buttonIconNames[systemImage] ?? 'sparkle'}
-                    style={visualStyle}
-                    size={18}
-                    color={foregroundColor}
-                  />
-                </View>
-              </RNHostView>
-            ) : null}
-            {fillsParentWidth ? <Spacer /> : null}
-          </HStack>
-        )}
-      </Button>
+      <Button
+        label={nativeLabel}
+        systemImage={nativeSystemImage as SFSymbol | undefined}
+        role={isCloseButton ? 'close' : 'default'}
+        onPress={onPress}
+        modifiers={modifiers}
+      />
     </Host>
   );
 }
-
-const styles = StyleSheet.create({
-  customContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  iconSlot: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
