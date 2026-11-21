@@ -3,16 +3,16 @@ import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { forwardRef, useCallback, useContext, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
 import { Tray, useTray } from '../../shared/components/organisms/tray';
 import { AppTextInput } from '../../components/app-text-input';
-import { SquirclePressable } from '../../components/squircle-card';
+import { SquirclePressable, SquircleView } from '../../components/squircle-card';
 import AppleAuthButton from './apple-auth-button';
 import { GoogleGlyph } from './google-glyph';
 import { toast } from '../../components/toast';
-import { textStyleForVisualStyle, EXPRESSIVE_FONT_SIZE_MULTIPLIER, VisualStyleContext } from '../home/visual-style-context';
+import { headingFontFamilyForVisualStyle, textStyleForVisualStyle, EXPRESSIVE_FONT_SIZE_MULTIPLIER, VisualStyleContext } from '../home/visual-style-context';
 import { useHomeSession, type OnboardingProfile } from '../home/home-session';
 import { useAccount } from './account-provider';
 
@@ -30,13 +30,13 @@ function nameFromUser(user: User) {
   return user.email?.split('@')[0].replace(/[._-]+/g, ' ') ?? '';
 }
 
-function TrayCopy({ children, style, display = false, accessibilityRole }: { children: ReactNode; style?: StyleProp<TextStyle>; display?: boolean; accessibilityRole?: 'alert' | 'text' }) {
+function TrayCopy({ children, style, display = false, heading = display, accessibilityRole }: { children: ReactNode; style?: StyleProp<TextStyle>; display?: boolean; heading?: boolean; accessibilityRole?: 'alert' | 'text' }) {
   const palette = useTheme();
   const colors = palette;
   const visualStyle = useContext(VisualStyleContext);
   const flatStyle = StyleSheet.flatten(style);
-  const typeScale = visualStyle === 'expressive' ? display ? 1.53 : 1.2 * EXPRESSIVE_FONT_SIZE_MULTIPLIER : 1;
-  return <Text accessibilityRole={accessibilityRole} style={[{ color: colors.ink }, style, typeScale !== 1 ? { fontSize: (flatStyle?.fontSize ?? 14) * typeScale, lineHeight: flatStyle?.lineHeight == null ? undefined : flatStyle.lineHeight * typeScale } : null, textStyleForVisualStyle(visualStyle)]}>{children}</Text>;
+  const typeScale = visualStyle === 'expressive' ? display ? 1.53 : EXPRESSIVE_FONT_SIZE_MULTIPLIER : 1;
+  return <Text accessibilityRole={accessibilityRole} style={[{ color: colors.ink }, style, typeScale !== 1 ? { fontSize: (flatStyle?.fontSize ?? 14) * typeScale, lineHeight: flatStyle?.lineHeight == null ? undefined : flatStyle.lineHeight * typeScale } : null, textStyleForVisualStyle(visualStyle), { ...(heading ? { fontFamily: headingFontFamilyForVisualStyle(visualStyle) } : {}), fontWeight: heading ? '600' : visualStyle === 'expressive' ? '400' : '200' }]}>{children}</Text>;
 }
 
 function GuestWorkspaceSignInFlow() {
@@ -126,19 +126,18 @@ function GuestWorkspaceSignInFlow() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Tray.ScrollView maxHeight={scrollMaxHeight} contentContainerStyle={[styles.sheetContent, { paddingBottom: LayoutSpacing.group }]}>
             <Tray.Header style={styles.trayHeader}>
-              <View style={styles.headerControl} />
-              <View style={styles.headerCopy}>
-                <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle)]}>Sign in to sync</Text>
+              <SquircleView style={styles.headerControl} />
+              <SquircleView style={styles.headerCopy}>
+                <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle), { fontFamily: headingFontFamilyForVisualStyle(visualStyle), fontWeight: '600' }]}>Sign in to sync</Text>
                 <Text style={[styles.traySubtitle, textStyleForVisualStyle(visualStyle)]}>Choose an account. Your planner stays here until you choose to sync.</Text>
-              </View>
+              </SquircleView>
               <Tray.Close style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.closeGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>×</Text>}
               </Tray.Close>
             </Tray.Header>
-            <View style={styles.providersBody}>
+            <SquircleView style={styles.providersBody}>
               {authError ? <Feedback severity="error" message={authError} /> : null}
               <SquirclePressable
-                pill
                 onPress={() => void beginSignIn('google')}
                 disabled={account.signingIn || busyProvider !== null || !account.configured}
                 style={({ pressed }) => [styles.providerButton, styles.googleButton, pressed && styles.buttonPressed, (account.signingIn || busyProvider !== null) && styles.buttonDisabled]}
@@ -146,18 +145,18 @@ function GuestWorkspaceSignInFlow() {
                 accessibilityLabel="Continue with Google"
                 accessibilityState={{ disabled: account.signingIn || busyProvider !== null || !account.configured, busy: busyProvider === 'google' }}
               >
-                <View style={styles.providerButtonContent} pointerEvents="none">
+                <SquircleView style={styles.providerButtonContent} pointerEvents="none">
                   <GoogleGlyph size={19} />
                   <TrayCopy style={styles.providerLabel}>Continue with Google</TrayCopy>
-                </View>
+                </SquircleView>
                 {busyProvider === 'google' ? <ActivityIndicator size="small" color={colors.green} style={styles.providerSpinner} /> : null}
               </SquirclePressable>
-              {Platform.OS === 'ios' ? <View style={[styles.appleButtonWrap, (account.signingIn || busyProvider !== null) && styles.buttonDisabled]}>
+              {Platform.OS === 'ios' ? <SquircleView style={[styles.appleButtonWrap, (account.signingIn || busyProvider !== null) && styles.buttonDisabled]}>
                 <AppleAuthButton onPress={() => void beginSignIn('apple')} disabled={account.signingIn || busyProvider !== null || !account.configured} labelFontSize={14} />
                 {busyProvider === 'apple' ? <ActivityIndicator size="small" color={palette.onInk} style={styles.appleSpinner} pointerEvents="none" /> : null}
-              </View> : null}
+              </SquircleView> : null}
               {!account.configured ? <TrayCopy style={styles.supportingText}>Sign-in is unavailable in this build. Your guest planner remains saved on this device.</TrayCopy> : null}
-            </View>
+            </SquircleView>
           </Tray.ScrollView>
         </KeyboardAvoidingView>
       </Tray.View>
@@ -169,16 +168,16 @@ function GuestWorkspaceSignInFlow() {
               <Tray.Back style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.backGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>‹</Text>}
               </Tray.Back>
-              <View style={styles.headerCopy}>
-                <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle)]}>Confirm your name</Text>
+              <SquircleView style={styles.headerCopy}>
+                <Text style={[styles.trayTitle, textStyleForVisualStyle(visualStyle), { fontFamily: headingFontFamilyForVisualStyle(visualStyle), fontWeight: '600' }]}>Confirm your name</Text>
                 <Text style={[styles.traySubtitle, textStyleForVisualStyle(visualStyle)]}>This name will appear on your account.</Text>
-              </View>
+              </SquircleView>
               <Tray.Close style={[styles.headerControl, styles.headerPill]}>
                 {({ color }) => <Text style={[styles.closeGlyph, { color }, textStyleForVisualStyle(visualStyle)]}>×</Text>}
               </Tray.Close>
             </Tray.Header>
-            {authError ? <View style={styles.feedbackWrap}><Feedback severity="error" message={authError} /></View> : null}
-            <View style={styles.confirmBody}>
+            {authError ? <SquircleView style={styles.feedbackWrap}><Feedback severity="error" message={authError} /></SquircleView> : null}
+            <SquircleView style={styles.confirmBody}>
               <TrayCopy style={styles.nameLabel}>YOUR NAME</TrayCopy>
               <AppTextInput
                 ref={nameInput}
@@ -196,8 +195,8 @@ function GuestWorkspaceSignInFlow() {
                 style={styles.nameInput}
               />
               <TrayCopy style={styles.syncConsentCopy}>Choose whether to sync your planner to this account or keep it on this device. You can change this in Profile.</TrayCopy>
-            </View>
-            <View style={styles.confirmFooter}>
+            </SquircleView>
+            <SquircleView style={styles.confirmFooter}>
               <SquirclePressable
                 onPress={() => void confirmName(true)}
                 disabled={savingName || !pendingAccount}
@@ -219,7 +218,7 @@ function GuestWorkspaceSignInFlow() {
               >
                 <TrayCopy style={styles.secondaryActionLabel}>Confirm name, keep data here</TrayCopy>
               </SquirclePressable>
-            </View>
+            </SquircleView>
           </Tray.ScrollView>
         </KeyboardAvoidingView>
       </Tray.View>
@@ -269,23 +268,23 @@ const createStyles = (palette: AppTheme) => { const colors = palette; return Sty
   traySubtitle: { color: colors.muted, fontSize: 12, lineHeight: 17, textAlign: 'center' },
   providersBody: { width: '100%', alignItems: 'stretch', paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.section, gap: LayoutSpacing.related },
   feedbackWrap: { paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.related },
-  providerButton: { width: '100%', alignSelf: 'stretch', minHeight: 56, borderRadius: Radius.pill, borderCurve: 'circular', borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
+  providerButton: { width: '100%', alignSelf: 'stretch', minHeight: 56, borderRadius: Radius.pill, borderCurve: 'circular', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
   providerButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   googleButton: { borderColor: colors.line, backgroundColor: palette.surface },
-  providerLabel: { fontSize: 14, fontWeight: '600' },
+  providerLabel: { fontSize: 14, fontWeight: '400' },
   providerSpinner: { position: 'absolute', right: 16 },
   appleButtonWrap: { position: 'relative', width: '100%' },
   appleSpinner: { position: 'absolute', right: 16, top: 0, bottom: 0 },
   supportingText: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
   confirmBody: { paddingHorizontal: LayoutSpacing.screenInset, paddingBottom: LayoutSpacing.related },
-  nameLabel: { color: colors.muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.1, marginBottom: 8 },
+  nameLabel: { color: colors.muted, fontSize: 10, fontWeight: '400', letterSpacing: 1.1, marginBottom: 8 },
   nameInput: { height: 52, paddingHorizontal: 15, borderRadius: Radius.control, borderWidth: 1, backgroundColor: palette.surface, color: colors.ink, fontSize: 15, marginBottom: 13 },
   syncConsentCopy: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
   confirmFooter: { paddingHorizontal: LayoutSpacing.screenInset, paddingTop: LayoutSpacing.related, paddingBottom: LayoutSpacing.group },
   primaryAction: { minHeight: 52, borderRadius: 99, backgroundColor: palette.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15 },
-  primaryActionLabel: { color: palette.onAccent, fontSize: 13, fontWeight: '600' },
+  primaryActionLabel: { color: palette.onAccent, fontSize: 13, fontWeight: '400' },
   secondaryAction: { minHeight: 48, borderRadius: 99, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.lightGreen, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
-  secondaryActionLabel: { color: colors.green, fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  secondaryActionLabel: { color: colors.green, fontSize: 12, fontWeight: '400', textAlign: 'center' },
   buttonPressed: { opacity: 0.76 },
   buttonDisabled: { opacity: 0.55 },
 }); };

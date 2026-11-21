@@ -1,17 +1,16 @@
-import { SquircleSurface } from '@/components/squircle-surface';
-import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
+import { SquirclePressable, SquircleView } from '@/components/squircle-card';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
-import { useContext, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useContext, useEffect, useMemo } from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppleAuthButton from './apple-auth-button';
 import { authProviderLabelTypography } from './auth-provider-typography';
 import { GoogleGlyph } from './google-glyph';
 import { AppIcon } from '../../components/app-icon';
-import { textStyleForVisualStyle, VisualStyleContext } from '../home/visual-style-context';
+import { headingFontFamilyForVisualStyle, textStyleForVisualStyle, VisualStyleContext } from '../home/visual-style-context';
 
 const WELCOME_GRADIENT_SHADER = `
 uniform float2 resolution;
@@ -99,6 +98,11 @@ export function WelcomeAuthScreen({
   const insets = useSafeAreaInsets();
   const visualStyle = useContext(VisualStyleContext);
   const panelHeight = Math.round(height * 0.58);
+  // The hero is dark green, so the status bar needs light icons while this screen is up.
+  useEffect(() => {
+    StatusBar.setBarStyle('light-content', true);
+    return () => StatusBar.setBarStyle('dark-content', true);
+  }, []);
   const effect = useMemo(() => Skia.RuntimeEffect.Make(WELCOME_GRADIENT_SHADER), []);
   const uniforms = useMemo(() => ({
     resolution: [width, panelHeight],
@@ -116,10 +120,11 @@ export function WelcomeAuthScreen({
   }), [panelHeight, width, palette]);
   return (
     <View style={styles.container}>
-      <SquircleSurface style={[styles.gradientPanel, { height: panelHeight }]}>
+      {/* Hero and sheet are intentionally square-cornered; they are the only squared surfaces in the app. */}
+      <View style={[styles.gradientPanel, { height: panelHeight }]}>
         {effect ? <Canvas style={StyleSheet.absoluteFill}><Fill><Shader source={effect} uniforms={uniforms} /></Fill></Canvas> : null}
-      </SquircleSurface>
-      <SquircleCard style={styles.sheet}>
+      </View>
+      <View style={styles.sheet}>
         <ScrollView
           contentContainerStyle={[styles.sheetContent, {
             paddingTop: Math.max(0, insets.top - insets.bottom * 0.2),
@@ -128,10 +133,10 @@ export function WelcomeAuthScreen({
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={[styles.title, textStyleForVisualStyle(visualStyle)]}>Plan your day</Text>
+          <Text accessibilityRole="header" style={[styles.title, textStyleForVisualStyle(visualStyle), { fontFamily: headingFontFamilyForVisualStyle(visualStyle), fontWeight: '600' }]}>Plan your day</Text>
           <Text style={[styles.subtitle, textStyleForVisualStyle(visualStyle)]}>Start on this device, or sign in and choose whether to sync.</Text>
 
-          <View style={styles.actions}>
+          <SquircleView style={styles.actions}>
             <AppleAuthButton onPress={onApple} disabled={busy || !accountConfigured} />
             <SquirclePressable
               onPress={onGoogle}
@@ -140,7 +145,7 @@ export function WelcomeAuthScreen({
               accessibilityRole="button"
               accessibilityLabel="Continue with Google"
             >
-              <View style={styles.actionInner}><GoogleGlyph /><Text style={[styles.actionLabelSecondary, authProviderLabelTypography(visualStyle), textStyleForVisualStyle(visualStyle)]}>{busy ? 'Connecting…' : 'Continue with Google'}</Text></View>
+              <SquircleView style={styles.actionInner}><GoogleGlyph /><Text style={[styles.actionLabelSecondary, authProviderLabelTypography(visualStyle), textStyleForVisualStyle(visualStyle)]}>{busy ? 'Connecting…' : 'Continue with Google'}</Text></SquircleView>
             </SquirclePressable>
             <SquirclePressable
               onPress={onGuest}
@@ -149,16 +154,16 @@ export function WelcomeAuthScreen({
               accessibilityRole="button"
               accessibilityLabel="Continue as guest"
             >
-              <View style={styles.actionInner}>
+              <SquircleView style={styles.actionInner}>
                 <AppIcon name="profile" size={18} color={palette.ink} />
                 <Text style={[styles.actionLabelSecondary, authProviderLabelTypography(visualStyle), textStyleForVisualStyle(visualStyle)]}>{busy ? 'Please wait…' : 'Continue as Guest'}</Text>
-              </View>
+              </SquircleView>
             </SquirclePressable>
-          </View>
+          </SquircleView>
 
           {!accountConfigured ? <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest mode is ready. Account sign-in is not configured on this build.</Text> : <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest plans stay on this device. Sync is your choice.</Text>}
         </ScrollView>
-      </SquircleCard>
+      </View>
       <SquirclePressable
         onPress={onSkip}
         disabled={busy || skipBusy}
@@ -190,5 +195,5 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   privacyNote: { marginTop: 15, color: palette.muted, fontFamily: 'Satoshi', fontSize: 11, lineHeight: 16, textAlign: 'center' },
   skipButton: { position: 'absolute', zIndex: 10, right: 22, minWidth: 80, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   skipPressed: { backgroundColor: palette.surface },
-  skipText: { color: palette.ink, fontFamily: 'Satoshi', fontSize: 13, fontWeight: '600' },
+  skipText: { color: palette.ink, fontFamily: 'Satoshi', fontSize: 13, fontWeight: '400' },
 }); };

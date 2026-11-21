@@ -1,7 +1,8 @@
+import { SquircleView } from '@/components/squircle-card';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import type { AppTheme } from '@/constants/theme';
 import { useContext, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 import type { User } from '@supabase/supabase-js';
 import { VisualStyleContext, textStyleForVisualStyle } from '../home/visual-style-context';
 
@@ -65,15 +66,15 @@ export function ProfileAvatar({ name, uri }: { name: string; uri: string | null 
   const visualStyle = useContext(VisualStyleContext);
   const shouldShowImage = Boolean(uri && failedUri !== uri);
   return (
-    <View
+    <SquircleView
       accessible
       accessibilityRole="image"
       accessibilityLabel={shouldShowImage ? `Profile photo for ${name}` : `Profile initials for ${name}`}
       style={styles.avatar}
     >
-      <View style={styles.fallback}>
+      <SquircleView style={styles.fallback}>
         <Text accessible={false} style={[styles.initials, textStyleForVisualStyle(visualStyle)]}>{initialsFor(name)}</Text>
-      </View>
+      </SquircleView>
       {shouldShowImage && uri ? (
         <Image
           accessible={false}
@@ -84,7 +85,7 @@ export function ProfileAvatar({ name, uri }: { name: string; uri: string | null 
         style={StyleSheet.absoluteFill}
         />
       ) : null}
-    </View>
+    </SquircleView>
   );
 }
 
@@ -105,7 +106,7 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
     color: palette.green,
     fontFamily: 'Satoshi',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 0.4,
   },
 }); };

@@ -1,7 +1,7 @@
-import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
+import { SquircleCard, SquirclePressable, SquircleView } from '@/components/squircle-card';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
-import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, StyleSheet, Text } from 'react-native';
 
 type SyncConsentDialogProps = {
   visible: boolean;
@@ -21,15 +21,14 @@ export function SyncConsentDialog({ visible, onChoice }: SyncConsentDialogProps)
       animationType="fade"
       onRequestClose={() => onChoice(false)}
     >
-      <View style={styles.scrim} accessibilityViewIsModal>
+      <SquircleView style={styles.scrim} accessibilityViewIsModal>
         <SquircleCard style={styles.card}>
           <Text style={styles.title} accessibilityRole="header">Sync your planner?</Text>
           <Text style={styles.body}>
             Choose whether to sync your planner to this account or keep it on this device. You can change this in Profile.
           </Text>
-          <View style={styles.actions}>
+          <SquircleView style={styles.actions}>
             <SquirclePressable
-              pill
               onPress={() => onChoice(false)}
               style={({ pressed }) => [styles.keepButton, pressed && styles.keepButtonPressed]}
               accessibilityRole="button"
@@ -38,7 +37,6 @@ export function SyncConsentDialog({ visible, onChoice }: SyncConsentDialogProps)
               <Text style={styles.keepButtonText}>Keep on this device</Text>
             </SquirclePressable>
             <SquirclePressable
-              pill
               onPress={() => onChoice(true)}
               style={({ pressed }) => [styles.syncButton, pressed && styles.syncButtonPressed]}
               accessibilityRole="button"
@@ -46,9 +44,9 @@ export function SyncConsentDialog({ visible, onChoice }: SyncConsentDialogProps)
             >
               <Text style={styles.syncButtonText}>Sync my planner</Text>
             </SquirclePressable>
-          </View>
+          </SquircleView>
         </SquircleCard>
-      </View>
+      </SquircleView>
     </Modal>
   );
 }
@@ -71,17 +69,18 @@ const createStyles = (palette: AppTheme) => StyleSheet.create({
   },
   title: {
     color: palette.ink,
-    fontFamily: 'Satoshi',
+    fontFamily: 'SatoshiBold',
     fontSize: 20,
     lineHeight: 26,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.35,
   },
   body: {
     color: palette.muted,
-    fontFamily: 'Satoshi',
+    fontFamily: 'SatoshiLight',
     fontSize: 14,
     lineHeight: 21,
+    fontWeight: '200',
   },
   actions: { gap: LayoutSpacing.control, marginTop: LayoutSpacing.control },
   keepButton: {
@@ -93,7 +92,7 @@ const createStyles = (palette: AppTheme) => StyleSheet.create({
     justifyContent: 'center',
   },
   keepButtonPressed: { backgroundColor: palette.pressed },
-  keepButtonText: { color: palette.green, fontFamily: 'Satoshi', fontSize: 14, fontWeight: '600' },
+  keepButtonText: { color: palette.green, fontFamily: 'SatoshiLight', fontSize: 14, fontWeight: '200' },
   syncButton: {
     minHeight: 50,
     paddingHorizontal: LayoutSpacing.group,
@@ -103,5 +102,5 @@ const createStyles = (palette: AppTheme) => StyleSheet.create({
     justifyContent: 'center',
   },
   syncButtonPressed: { backgroundColor: palette.actionPressed },
-  syncButtonText: { color: palette.onAccent, fontFamily: 'Satoshi', fontSize: 14, fontWeight: '700' },
+  syncButtonText: { color: palette.onAccent, fontFamily: 'SatoshiLight', fontSize: 14, fontWeight: '200' },
 });
