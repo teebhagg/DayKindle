@@ -1,23 +1,24 @@
-import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
+import { AnimatedSquircleView, SquircleCard, SquirclePressable, SquircleView } from '@/components/squircle-card';
 import { EmptyState } from '@/components/app-empty-state';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInUp, FadeOut, LinearTransition, useAnimatedScrollHandler, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { AppIcon } from '../../components/app-icon';
 import NativeActionButton from '../../components/native-action-button';
 import { ProgressiveEdgeBlur } from '../../components/progressive-edge-blur';
-import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, topHeaderBlurHeight } from '../../components/header-gradient-metrics';
+import { APP_HEADER_FADE_CONTENT_HEIGHT, APP_NON_TAB_HEADER_HEIGHT, APP_HEADER_BAR_HEIGHT, IOS_TITLE_OPTICAL_PADDING_BOTTOM, topHeaderBlurHeight } from '../../components/header-gradient-metrics';
 import { MaskedTabBar } from '../../shared/components/organisms/masked-tab-bar';
 import { dateKey, shiftDateKey, useHomeSession, type HomeEntry, type StarterPlan } from './home-session';
 import { occurrenceStatus } from './occurrences';
 import { textStyleForVisualStyle, VisualStyleContext } from './visual-style-context';
 import { NON_TAB_HEADER_TITLE_SCALE } from './layout-metrics';
 import { PageText } from './page-text';
+import { UI_MOTION } from '@/constants/motion';
 
 type CalendarView = 'month' | 'week' | 'day';
 type HistoryItem = {
@@ -116,6 +117,12 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<CalendarView>('month');
   const [selectedDate, setSelectedDate] = useState(dateKey());
+  const reduceMotion = useReducedMotion();
+  const calendarModeEntering = reduceMotion
+    ? FadeIn.duration(0)
+    : FadeInUp.duration(UI_MOTION.selectionMs).withInitialValues({ opacity: 0.78, transform: [{ translateY: 3 }] });
+  const calendarModeExiting = reduceMotion ? FadeOut.duration(0) : FadeOut.duration(UI_MOTION.contentExitMs);
+  const calendarModeLayout = LinearTransition.duration(reduceMotion ? 0 : UI_MOTION.layoutMs).easing(Easing.out(Easing.cubic));
   const today = dateKey();
   const isWide = width >= 600;
   const headerHeight = insets.top + APP_NON_TAB_HEADER_HEIGHT;
@@ -157,37 +164,42 @@ export default function HistoryScreen() {
     const count = itemsByDate.get(date)?.length ?? 0;
     const label = `${dateLabel(date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${count ? `, ${count} ${count === 1 ? 'activity' : 'activities'}` : ', no recorded activity'}${isToday ? ', today' : ''}${selected ? ', selected' : ''}`;
     return <SquirclePressable
-      pill
       key={date}
       disabled={isFuture}
       onPress={() => setSelectedDate(date)}
-      style={({ pressed }) => [compact ? styles.weekDateButton : styles.monthDateButton, selected && styles.dateButtonSelected, !selected && isToday && styles.dateButtonToday, isFuture && styles.dateButtonFuture, !compact && !inMonth && styles.dateButtonOutsideMonth, pressed && !isFuture && !selected && styles.dateButtonPressed]}
+      style={({ pressed }) => [compact ? styles.weekDateButton : styles.monthDateButton, !selected && isToday && styles.dateButtonToday, isFuture && styles.dateButtonFuture, !compact && !inMonth && styles.dateButtonOutsideMonth, pressed && !isFuture && !selected && styles.dateButtonPressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected, disabled: isFuture }}
     >
+      {selected && <AnimatedSquircleView
+        pointerEvents="none"
+        entering={reduceMotion ? FadeIn.duration(0) : FadeIn.duration(UI_MOTION.selectionMs).withInitialValues({ opacity: 0.7 })}
+        exiting={reduceMotion ? FadeOut.duration(0) : FadeOut.duration(UI_MOTION.contentExitMs)}
+        style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill, backgroundColor: palette.green }]}
+      />}
       {compact ? <>
-        <View style={styles.weekDateCopy}>
+        <SquircleView style={styles.weekDateCopy}>
           <Text style={[styles.weekdayLabel, textStyle, selected && styles.selectedDateText]}>{dateLabel(date, { weekday: 'long' })}</Text>
           <Text style={[styles.weekDateMeta, textStyle, selected && styles.selectedWeekDateMeta]}>{dateLabel(date, { month: 'short', day: 'numeric' })} · {count ? `${count} ${count === 1 ? 'activity' : 'activities'}` : 'No activity'}</Text>
-        </View>
-        <View style={[styles.dateNumberCircle, selected && styles.dateNumberCircleSelected]}>
+        </SquircleView>
+        <SquircleView style={[styles.dateNumberCircle, selected && styles.dateNumberCircleSelected]}>
           <Text style={[styles.dateNumber, textStyle, selected && styles.selectedDateText, isFuture && styles.futureText]}>{Number(date.slice(8, 10))}</Text>
-        </View>
-        <View style={styles.activityDots} accessibilityElementsHidden>
-          {count > 0 && Array.from({ length: Math.min(count, 3) }, (_, index) => <View key={`${date}-dot-${index}`} style={[styles.activityDot, selected && styles.activityDotSelected]} />)}
-        </View>
+        </SquircleView>
+        <SquircleView style={styles.activityDots} accessibilityElementsHidden>
+          {count > 0 && Array.from({ length: Math.min(count, 3) }, (_, index) => <SquircleView key={`${date}-dot-${index}`} style={[styles.activityDot, selected && styles.activityDotSelected]} />)}
+        </SquircleView>
       </> : <>
-        <View style={[styles.dateNumberCircle, selected && styles.dateNumberCircleSelected]}>
+        <SquircleView style={[styles.dateNumberCircle, selected && styles.dateNumberCircleSelected]}>
           <Text style={[styles.dateNumber, textStyle, selected && styles.selectedDateText, !inMonth && styles.outsideMonthText, isFuture && styles.futureText]}>{Number(date.slice(8, 10))}</Text>
-        </View>
-        <View style={styles.activityDots} accessibilityElementsHidden>
-          {count > 0 && Array.from({ length: Math.min(count, 3) }, (_, index) => <View key={`${date}-dot-${index}`} style={[styles.activityDot, selected && styles.activityDotSelected]} />)}
-        </View>
+        </SquircleView>
+        <SquircleView style={styles.activityDots} accessibilityElementsHidden>
+          {count > 0 && Array.from({ length: Math.min(count, 3) }, (_, index) => <SquircleView key={`${date}-dot-${index}`} style={[styles.activityDot, selected && styles.activityDotSelected]} />)}
+        </SquircleView>
       </>}
     </SquirclePressable>;
   };
-  const listHeader = <View style={[styles.content, isWide && styles.contentWide]}>
+  const listHeader = <SquircleView style={[styles.content, isWide && styles.contentWide]}>
     <Text style={[styles.screenSubtitle, textStyle]}>Review completed activity and goal progress by date.</Text>
 
     <MaskedTabBar
@@ -201,7 +213,7 @@ export default function HistoryScreen() {
       padding={3}
       gap={3}
       fontSize={13}
-      fontWeight="500"
+      fontWeight="400"
       palette={{ track: palette.lightGreen, pill: palette.surface, inactive: palette.muted, active: palette.ink }}
       style={styles.viewSelector}
     >
@@ -213,48 +225,50 @@ export default function HistoryScreen() {
     </MaskedTabBar>
 
     <SquircleCard style={styles.calendarCard}>
-      <View style={styles.periodHeader}>
-        <View style={styles.periodHeadingCopy}>
-          <Text style={[styles.periodTitle, textStyle]}>{periodTitle}</Text>
+      <SquircleView style={styles.periodHeader}>
+        <SquircleView style={styles.periodHeadingCopy}>
+          <Text heading style={[styles.periodTitle, textStyle]}>{periodTitle}</Text>
           <Text style={[styles.periodSubtitle, textStyle]}>{view === 'month' ? 'Select a date to see what you completed' : `${selectedItems.length} ${selectedItems.length === 1 ? 'activity' : 'activities'} on the selected date`}</Text>
-        </View>
-        <View style={styles.calendarActions}>
-          <SquirclePressable pill onPress={() => setSelectedDate(today)} style={styles.todayButton} accessibilityRole="button" accessibilityLabel="Go to today">
+        </SquircleView>
+        <SquircleView style={styles.calendarActions}>
+          <NativeActionButton label="Today" iosHeaderStyle="action" appearance="plain" tintColor={palette.green} labelColor={palette.green} onPress={() => setSelectedDate(today)} accessibilityLabel="Go to today" style={styles.todayButton}>
             <Text style={[styles.todayButtonText, textStyle]}>Today</Text>
-          </SquirclePressable>
-          <SquirclePressable pill onPress={() => movePeriod(-1)} style={styles.arrowButton} accessibilityRole="button" accessibilityLabel={`Previous ${view}`}>
+          </NativeActionButton>
+          <NativeActionButton label="" systemImage="chevron.left" iosHeaderStyle="back" appearance="plain" tintColor={palette.green} onPress={() => movePeriod(-1)} accessibilityLabel={`Previous ${view}`} style={styles.arrowButton}>
             <AppIcon name="back" style={visualStyle} size={17} color={palette.green} />
-          </SquirclePressable>
-          <SquirclePressable pill onPress={() => movePeriod(1)} disabled={!canMoveForward} style={[styles.arrowButton, !canMoveForward && styles.arrowButtonDisabled]} accessibilityRole="button" accessibilityLabel={`Next ${view}`} accessibilityState={{ disabled: !canMoveForward }}>
+          </NativeActionButton>
+          <NativeActionButton label="" systemImage="chevron.right" iosHeaderStyle="back" appearance="plain" tintColor={canMoveForward ? palette.green : palette.muted} disabled={!canMoveForward} onPress={() => movePeriod(1)} accessibilityLabel={`Next ${view}`} style={styles.arrowButton}>
             <AppIcon name="arrow" style={visualStyle} size={17} color={canMoveForward ? palette.green : palette.muted} />
-          </SquirclePressable>
-        </View>
-      </View>
+          </NativeActionButton>
+        </SquircleView>
+      </SquircleView>
 
-      {view === 'month' && <>
-        <View style={styles.weekdayHeader}>{weekDays.map((day, index) => <Text key={`${day}-${index}`} style={[styles.weekdayHeaderText, textStyle]}>{day}</Text>)}</View>
-        <View style={styles.monthGrid}>{monthDates.map((date) => dateButton(date))}</View>
-      </>}
-      {view === 'week' && <View style={styles.weekList}>{weekDates.map((date) => dateButton(date, true))}</View>}
-      {view === 'day' && <View style={styles.daySummary}>
-        <View style={styles.daySummaryNumber}><Text style={[styles.daySummaryNumberText, textStyle]}>{Number(selectedDate.slice(8, 10))}</Text></View>
-        <View style={styles.daySummaryCopy}>
-          <Text style={[styles.daySummaryTitle, textStyle]}>{dateLabel(selectedDate, { weekday: 'long' })}</Text>
-          <Text style={[styles.daySummarySubtitle, textStyle]}>{selectedItems.length ? `${selectedItems.length} completed ${selectedItems.length === 1 ? 'activity' : 'activities'}` : 'No recorded activity'}</Text>
-        </View>
-      </View>}
+      <AnimatedSquircleView key={view} entering={calendarModeEntering} exiting={calendarModeExiting} layout={calendarModeLayout} style={styles.calendarMode}>
+        {view === 'month' && <>
+          <SquircleView style={styles.weekdayHeader}>{weekDays.map((day, index) => <Text key={`${day}-${index}`} style={[styles.weekdayHeaderText, textStyle]}>{day}</Text>)}</SquircleView>
+          <SquircleView style={styles.monthGrid}>{monthDates.map((date) => dateButton(date))}</SquircleView>
+        </>}
+        {view === 'week' && <SquircleView style={styles.weekList}>{weekDates.map((date) => dateButton(date, true))}</SquircleView>}
+        {view === 'day' && <SquircleView style={styles.daySummary}>
+          <SquircleView style={styles.daySummaryNumber}><Text style={[styles.daySummaryNumberText, textStyle]}>{Number(selectedDate.slice(8, 10))}</Text></SquircleView>
+          <SquircleView style={styles.daySummaryCopy}>
+            <Text style={[styles.daySummaryTitle, textStyle]}>{dateLabel(selectedDate, { weekday: 'long' })}</Text>
+            <Text style={[styles.daySummarySubtitle, textStyle]}>{selectedItems.length ? `${selectedItems.length} completed ${selectedItems.length === 1 ? 'activity' : 'activities'}` : 'No recorded activity'}</Text>
+          </SquircleView>
+        </SquircleView>}
+      </AnimatedSquircleView>
     </SquircleCard>
 
-    <View style={styles.activityHeading}>
-      <View>
-        <Text style={[styles.activityHeadingTitle, textStyle]}>Activity</Text>
+    <SquircleView style={styles.activityHeading}>
+      <SquircleView>
+        <Text heading style={[styles.activityHeadingTitle, textStyle]}>Activity</Text>
         <Text style={[styles.activityHeadingDate, textStyle]}>{dateLabel(selectedDate, { month: 'long', day: 'numeric', year: 'numeric' })}</Text>
-      </View>
-      <View style={styles.activityCount}><Text style={[styles.activityCountText, textStyle]}>{selectedItems.length}</Text></View>
-    </View>
-  </View>;
+      </SquircleView>
+      <SquircleView style={styles.activityCount}><Text style={[styles.activityCountText, textStyle]}>{selectedItems.length}</Text></SquircleView>
+    </SquircleView>
+  </SquircleView>;
   return <VisualStyleContext.Provider value={visualStyle}>
-    <View style={styles.screen}>
+    <SquircleView style={styles.screen}>
       <Animated.FlatList
         data={selectedItems}
         extraData={selectedDate}
@@ -273,35 +287,35 @@ export default function HistoryScreen() {
                 : item.kind === 'Routine step completed'
                   ? 'clock'
                   : 'check';
-          return <View style={[styles.activityRow, isWide && styles.contentWide]}>
-            <View style={styles.activityIcon}><AppIcon name={icon} style={visualStyle} size={17} color={palette.green} /></View>
-            <View style={styles.activityCopy}>
+          return <AnimatedSquircleView entering={reduceMotion ? FadeIn.duration(0) : FadeInUp.duration(UI_MOTION.contentEnterMs).withInitialValues({ opacity: 0.82, transform: [{ translateY: 3 }] })} exiting={reduceMotion ? FadeOut.duration(0) : FadeOut.duration(UI_MOTION.contentExitMs)} layout={calendarModeLayout} style={[styles.activityRow, isWide && styles.contentWide]}>
+            <SquircleView style={styles.activityIcon}><AppIcon name={icon} style={visualStyle} size={17} color={palette.green} /></SquircleView>
+            <SquircleView style={styles.activityCopy}>
               <Text style={[styles.activityTitle, textStyle]}>{item.title}</Text>
               <Text style={[styles.activityMeta, textStyle]}>{item.kind}{item.detail ? ` · ${item.detail}` : ''}</Text>
-            </View>
-            <View style={styles.activityMarker} />
-          </View>;
+            </SquircleView>
+            <SquircleView style={styles.activityMarker} />
+          </AnimatedSquircleView>;
         }}
-        ItemSeparatorComponent={() => <View style={[styles.listSeparator, isWide && styles.contentWide]} />}
+        ItemSeparatorComponent={() => <SquircleView style={[styles.listSeparator, isWide && styles.contentWide]} />}
         contentContainerStyle={[styles.listContent, { paddingTop: headerHeight + 16, paddingBottom: Math.max(insets.bottom, 24) }]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={12}
         windowSize={7}
       />
       <ProgressiveEdgeBlur edge="bottom" surfaceColor={palette.paper} style={{ zIndex: 8 }} />
-      <View pointerEvents="none" style={[styles.topBlur, { height: topHeaderBlurHeight(headerFadeHeight) }]}>
+      <SquircleView pointerEvents="none" style={[styles.topBlur, { height: topHeaderBlurHeight(headerFadeHeight) }]}>
         <ProgressiveEdgeBlur edge="top" surfaceColor={palette.paper} startOffset={0.8} scrollProgress={scrollY} revealDistance={headerFadeHeight} style={styles.topBlurContent} />
-      </View>
-      <View pointerEvents="box-none" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
-        <View style={[styles.topBar, { height: APP_NON_TAB_HEADER_HEIGHT, marginTop: insets.top }]}>
-          <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" appearance="plain" tintColor={palette.ink} labelColor={palette.ink} onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
+      </SquircleView>
+      <SquircleView pointerEvents="auto" collapsable={false} renderToHardwareTextureAndroid style={[styles.headerOverlay, { height: headerHeight }]}>
+        <SquircleView style={[styles.topBar, { height: APP_HEADER_BAR_HEIGHT, marginTop: insets.top }]}>
+          <NativeActionButton label="Back" systemImage="chevron.left" iconPlacement="leading" iosHeaderStyle="back" appearance="plain" tintColor={palette.ink} labelColor={palette.ink} onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
             <AppIcon name="back" style={visualStyle} size={18} color={palette.ink} /><PageText style={styles.backLabel}>Back</PageText>
           </NativeActionButton>
-          <View style={styles.topBarBalance} />
-          </View>
-          <View pointerEvents="none" style={[styles.headerTitle, { top: insets.top, height: APP_NON_TAB_HEADER_HEIGHT }]}><PageText style={styles.collapsedTitle}>History</PageText></View>
-      </View>
-    </View>
+          <SquircleView style={styles.topBarBalance} />
+          </SquircleView>
+      <SquircleView pointerEvents="none" style={[styles.headerTitle, { top: insets.top, height: APP_HEADER_BAR_HEIGHT }]}><PageText heading style={styles.collapsedTitle}>History</PageText></SquircleView>
+      </SquircleView>
+    </SquircleView>
   </VisualStyleContext.Provider>;
 }
 
@@ -314,13 +328,14 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   contentWide: { maxWidth: 700 },
   headerOverlay: { position: 'absolute', zIndex: 20, top: 0, left: 0, right: 0, overflow: 'hidden' },
   topBar: { paddingHorizontal: LayoutSpacing.screenInset, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 88, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { position: 'absolute', zIndex: 1, left: 0, right: 0, paddingHorizontal: 88, paddingBottom: IOS_TITLE_OPTICAL_PADDING_BOTTOM, alignItems: 'center', justifyContent: 'center' },
   backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  backLabel: { color: palette.ink, fontSize: 13.2, fontWeight: '600' },
+  backLabel: { color: palette.ink, fontSize: 13.2, fontWeight: '400' },
   collapsedTitle: { width: '100%', color: palette.ink, fontSize: 20.9 * NON_TAB_HEADER_TITLE_SCALE, lineHeight: 27.5 * NON_TAB_HEADER_TITLE_SCALE, fontWeight: '600', textAlign: 'center' },
   topBarBalance: { width: 78 },
   screenSubtitle: { color: palette.muted, fontSize: 14.3, lineHeight: 22, marginBottom: LayoutSpacing.group },
   viewSelector: { marginBottom: LayoutSpacing.group },
+  calendarMode: { width: '100%' },
   calendarCard: { padding: 15, borderRadius: Radius.card, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface },
   periodHeader: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7, marginBottom: 11 },
   periodHeadingCopy: { flex: 1, gap: 3 },
@@ -328,27 +343,26 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   periodSubtitle: { color: palette.muted, fontSize: 10.5, lineHeight: 15 },
   calendarActions: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   todayButton: { minWidth: 52, minHeight: 44, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, borderCurve: 'circular', backgroundColor: palette.lightGreen },
-  todayButtonText: { color: palette.green, fontSize: 11, fontWeight: '700' },
+  todayButtonText: { color: palette.green, fontSize: 11, fontWeight: '400' },
   arrowButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, borderCurve: 'circular' },
   arrowButtonDisabled: { opacity: 0.42 },
   weekdayHeader: { height: 31, flexDirection: 'row', alignItems: 'center' },
-  weekdayHeaderText: { width: '14.2857%', color: palette.muted, textAlign: 'center', fontSize: 10, fontWeight: '700' },
+  weekdayHeaderText: { width: '14.2857%', color: palette.muted, textAlign: 'center', fontSize: 10, fontWeight: '400' },
   monthGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   monthDateButton: { width: '14.2857%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, borderCurve: 'circular' },
   weekList: { gap: LayoutSpacing.control },
   weekDateButton: { width: '100%', minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 11, borderRadius: Radius.pill, borderCurve: 'circular' },
   weekDateCopy: { flex: 1, gap: 2 },
-  weekdayLabel: { color: palette.ink, fontSize: 13, fontWeight: '600' },
+  weekdayLabel: { color: palette.ink, fontSize: 13, fontWeight: '400' },
   weekDateMeta: { color: palette.muted, fontSize: 10.5, lineHeight: 15 },
   selectedWeekDateMeta: { color: palette.onAccent },
-  dateButtonSelected: { backgroundColor: palette.green },
   dateButtonToday: { borderWidth: 1, borderColor: palette.chartSecondary },
   dateButtonFuture: {},
   dateButtonOutsideMonth: {},
   dateButtonPressed: { backgroundColor: palette.lightGreen },
   dateNumberCircle: { width: 29, height: 29, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill},
   dateNumberCircleSelected: {},
-  dateNumber: { color: palette.ink, fontSize: 12, fontWeight: '500' },
+  dateNumber: { color: palette.ink, fontSize: 12, fontWeight: '400' },
   selectedDateText: { color: palette.onAccent },
   outsideMonthText: { color: palette.muted },
   futureText: { color: palette.muted },
@@ -357,24 +371,24 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   activityDotSelected: { backgroundColor: palette.onAccent },
   daySummary: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 5, paddingVertical: 8 },
   daySummaryNumber: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.control, backgroundColor: palette.lightGreen },
-  daySummaryNumberText: { color: palette.green, fontSize: 23, fontWeight: '600' },
+  daySummaryNumberText: { color: palette.green, fontSize: 23, fontWeight: '400' },
   daySummaryCopy: { flex: 1, gap: 3 },
-  daySummaryTitle: { color: palette.ink, fontSize: 16, fontWeight: '600' },
+  daySummaryTitle: { color: palette.ink, fontSize: 16, fontWeight: '400' },
   daySummarySubtitle: { color: palette.muted, fontSize: 12 },
   activityHeading: { minHeight: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16 },
   activityHeadingTitle: { color: palette.ink, fontSize: 17, fontWeight: '600' },
   activityHeadingDate: { color: palette.muted, fontSize: 11, marginTop: 3 },
   activityCount: { minWidth: 30, height: 30, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, backgroundColor: palette.lightGreen },
-  activityCountText: { color: palette.green, fontSize: 12, fontWeight: '700' },
+  activityCountText: { color: palette.green, fontSize: 12, fontWeight: '400' },
   activityRow: { width: '100%', minHeight: 69, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 12 },
   activityIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.small, backgroundColor: palette.lightGreen },
   activityCopy: { flex: 1, gap: 3 },
-  activityTitle: { color: palette.ink, fontSize: 13.5, lineHeight: 19, fontWeight: '500' },
+  activityTitle: { color: palette.ink, fontSize: 13.5, lineHeight: 19, fontWeight: '400' },
   activityMeta: { color: palette.muted, fontSize: 10.5, lineHeight: 15 },
   activityMarker: { width: 7, height: 7, borderRadius: 4, backgroundColor: palette.green },
   listSeparator: { height: StyleSheet.hairlineWidth, maxWidth: 660, width: '100%', alignSelf: 'center', backgroundColor: palette.line },
   emptyState: { width: '100%', alignSelf: 'center', alignItems: 'center', paddingHorizontal: 34, paddingTop: 27, gap: 9 },
   emptyIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.control, backgroundColor: palette.lightGreen },
-  emptyTitle: { color: palette.ink, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  emptyTitle: { color: palette.ink, fontSize: 14, fontWeight: '400', textAlign: 'center' },
   emptySubtitle: { color: palette.muted, fontSize: 11.5, lineHeight: 17, textAlign: 'center' },
 }); };
