@@ -1,48 +1,42 @@
 # DayKindle
 
-Plan personal goals and daily actions. Review what happened and adjust as you go.
+## Register
 
-## App description
-
-DayKindle helps you plan goals, tasks, habits, and routines. Use Today to see scheduled actions and record what happened. Mark actions complete, missed, or skipped. Reschedule an action or revise a plan when your day changes. Progress and History summarize your recorded activity. Weekly reflections give you space to note what worked and what you want to change.
-
-Start with a Guest workspace and keep planner data on your device. You can set one-time or daily reminders. Delivery depends on your device's notification permissions and settings.
-
-## Short description
-
-Plan goals and routines. Track daily actions and adjust as you go.
-
-## Product purpose
-
-DayKindle is a personal planning app for people who want to follow through on goals and recurring actions. It brings goals, tasks, habits, and routines into a daily plan, then lets users review recorded activity and update plans that no longer fit.
-
-The app should help people resume after a missed action. It should not treat missed plans as failure or imply that tracking alone changes behavior.
+brand
 
 ## Users
 
-Adults who want a practical way to plan personal goals and recurring actions. DayKindle is designed for individual use on a phone.
+DayKindle is for people who want a steady, practical way to plan personal goals, tasks, habits, and routines. They use it to decide what to do today, record what happened, and adjust plans when the day changes. The mobile app is intended for people aged 13 and older, with guardian involvement where local law requires it.
 
-## Implementation and release scope
+## Product Purpose
 
-- The current source implements a local Guest workspace for goals, milestones, tasks, habits, routines, check-ins, progress, history, weekly reflections, and reminders.
-- Progress and History summarize activity the user records. They do not predict outcomes or diagnose behavior.
-- Reminders are scheduled on the device and require notification permission. Delivery follows the device's notification settings.
-- Source coverage is not release sign-off. Verify Guest data persistence and recovery, planning flows, Progress, History, and reminder delivery on supported iOS and Android builds before publication.
-- Sign-in and optional cloud sync require a configured Supabase project, provider credentials, and verified account and recovery flows. Do not advertise these as available until they pass release testing in the production configuration.
-- Do not claim coaching, social accountability, automatic behavior tracking, or guaranteed outcomes. Those claims are not supported by the current app.
+DayKindle helps people make a plan, follow through where they can, and return to it after a missed or changed day. It brings goals, routines, daily actions, progress, history, and weekly reflection into one personal planner.
 
-## Brand voice
+The project is open source and intended for community use. The public marketing site explains the app and its origin. The private team dashboard is for aggregate product improvement data from PostHog and Supabase. It must not expose personal goals, plans, check-ins, or reflection text.
 
-Warm, calm, direct, and practical. Tell users what they can do. Use neutral language for missed or skipped actions. Avoid guilt, pressure, exaggerated outcomes, and claims that the app will change someone's life.
+## Brand Personality
 
-## Design principles
+Warm, calm, direct, and practical. The product grew from Joshua's wish to improve his lifestyle and deepen his relationship with God as a Christian. That motivation belongs in the founder story; people do not need to share his faith to use DayKindle.
 
-- Keep Today focused on scheduled actions.
-- Make it straightforward to complete, reschedule, or revise a plan.
-- Explain progress using recorded activity and clear dates.
-- Keep the core planner available offline.
-- Apply the selected visual style consistently across text, icons, charts, and motion.
+Copy should name what the app does, make room for ordinary changes, and avoid guilt, pressure, inflated promises, and claims that tracking alone changes behavior.
 
-## Accessibility checks for release
+## Anti-references
 
-Verify VoiceOver and TalkBack labels, scalable text, reduced motion, color contrast, and touch targets on supported devices. Routine actions must not depend on gestures alone. Describe accessibility support publicly only after these checks pass.
+- Generic AI-written SaaS slogans and abstract claims.
+- Dense corporate dashboards that treat every metric as a KPI.
+- Punitive streaks, shame, or gamification around missed actions.
+- Claims about coaching, automatic behavior tracking, guaranteed outcomes, or features that have not been verified.
+- Product analytics that reveal an individual's goals, plans, check-ins, or reflection content.
+- Constant motion, excessive gradients, glass effects, or decorative cards without a clear purpose.
+
+## Design Principles
+
+- Keep the daily plan easy to change when life changes.
+- Explain progress with recorded activity and clear time ranges.
+- Be clear about where data is stored and what the private dashboard can see.
+- Let the mobile app's evergreen palette, typography, and organic shapes guide both web apps while giving the public site and internal dashboard distinct jobs.
+- Keep motion purposeful, interruptible, and optional when a person requests reduced motion.
+
+## Accessibility & Inclusion
+
+Use semantic headings and controls, visible keyboard focus, readable text and contrast, meaningful image descriptions, and reduced-motion alternatives. Keep actions usable without gestures alone. Do not claim a conformance level or accessibility support that has not been verified on the relevant browsers and devices.
