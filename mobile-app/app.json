@@ -15,6 +15,7 @@
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.daykindle.app",
       "usesAppleSignIn": true,
+      "googleServicesFile": "./GoogleServices-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -38,7 +39,8 @@
         "expo-notifications",
         {
           "color": "#587A66",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": ["./assets/sounds/daykindle-reminder-warm.wav"]
         }
       ],
       [
