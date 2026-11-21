@@ -1,27 +1,15 @@
 import { EmptyState } from '@/components/app-empty-state';
+import { SHEET_SNAP_POINTS, TALL_SHEET_SNAP_POINTS } from '@/components/sheet-snap-points';
 import { Feedback, type AppFeedback } from '@/components/app-feedback';
-import { SquircleCard, SquirclePressable } from '@/components/squircle-card';
+import { SquircleCard, SquirclePressable, SquircleView, AnimatedSquircleView } from '@/components/squircle-card';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { LayoutSpacing, Radius } from '@/constants/theme';
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert as SystemAlert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Switch,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-  type TextInput as NativeTextInput,
-} from 'react-native';
+import { ActivityIndicator, Alert as SystemAlert, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, StyleSheet, View, useWindowDimensions, type TextInput as NativeTextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, FadeIn } from 'react-native-reanimated';
+import Animated, { Easing, Extrapolation, interpolate, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withTiming, FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-reanimated';
 import { posthog } from '../../lib/posthog';
 import { dateKey, deleteLocalAccountData, getGoalProgressStatus, getTaskProgressStatus, shiftDateKey, useHomeSession, type Commitment, type GoalProgressEvent, type GoalMilestone, type GoalLifecycleStatus, type HomeEntry as Entry, type HabitDefinition, type NotificationReminder, type PlannerSnapshot, type RecurrenceRule, type TaskDefinition, type TaskPriority, type TaskSubtaskDefinition } from './home-session';
 import { registerPushToken, syncLocalNotifications } from './notification-service';
@@ -46,11 +34,12 @@ import { listRecoverySnapshots, saveRecoverySnapshot, type RecoverySnapshot } fr
 import { createPlannerSnapshot } from './planner-snapshot';
 import { toast } from '../../components/toast';
 import { PageText } from './page-text';
+import { StrikeText, STRIKE_LINE_MS, STRIKE_SUBTITLE_DELAY_MS } from './strike-text';
 import { APP_HOME_EXPANDED_HEADER_HEIGHT, APP_TAB_EXPANDED_HEADER_HEIGHT } from './layout-metrics';
 import { createHomeScreenStyles } from './home-screen-styles';
-import { SkiaCollapsingHeaderSurface } from './skia-collapsing-header-surface';
 import { useHomeScreenModel, type ProgressRangeId } from './use-home-screen-model';
 import ProgressTab from './progress-tab';
+import { UI_MOTION } from '@/constants/motion';
 
 type EntryType = 'task' | 'habit' | 'goal';
 type Tab = 'today' | 'goals' | 'progress' | 'profile';
@@ -65,7 +54,9 @@ const tabs: { id: Tab; label: string }[] = [
 ];
 const TAB_BAR_FOOTER_FADE_HEIGHT = 144;
 const TAB_BAR_HEIGHT = 72;
-const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+// Matches `tabBar.paddingHorizontal` in home-screen-styles.ts.
+const TAB_BAR_PADDING = 4;
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const isValidDateKey = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T12:00:00`).getTime()) && dateKey(new Date(`${value}T12:00:00`)) === value;
 const missedReasonOptions: { id: MissedReason; label: string }[] = [
   { id: 'forgot', label: 'Forgot' }, { id: 'low_motivation', label: 'Low motivation' }, { id: 'low_energy', label: 'Low energy' },
@@ -109,8 +100,8 @@ function DateField({ value, onChange, placeholder, accessibilityLabel, optional 
   }
 
   if (Platform.OS === 'ios') {
-    return <View style={styles.dateFieldWrap}>
-      <View style={styles.dateFieldRow}>
+    return <SquircleView style={styles.dateFieldWrap}>
+      <SquircleView style={styles.dateFieldRow}>
         <NativeDatePickerPopover
           value={pickerSelection}
           minimumDate={validMinimumDate}
@@ -120,19 +111,19 @@ function DateField({ value, onChange, placeholder, accessibilityLabel, optional 
           accessibilityLabel={accessibilityLabel}
           onChange={(selectedDate) => onChange(dateKey(selectedDate))}
         />
-        {optional && hasDate && <Pressable onPress={() => { onChange(''); dismissPicker(); }} style={styles.dateFieldClear} accessibilityRole="button" accessibilityLabel={`Clear ${accessibilityLabel}`}><PageText style={styles.dateFieldClearText}>Clear</PageText></Pressable>}
-      </View>
-    </View>;
+        {optional && hasDate && <SquirclePressable onPress={() => { onChange(''); dismissPicker(); }} style={styles.dateFieldClear} accessibilityRole="button" accessibilityLabel={`Clear ${accessibilityLabel}`}><PageText style={styles.dateFieldClearText}>Clear</PageText></SquirclePressable>}
+      </SquircleView>
+    </SquircleView>;
   }
 
-  return <View style={styles.dateFieldWrap}>
-    <View style={styles.dateFieldRow}>
-      <Pressable onPress={() => setPickerOpen(true)} style={styles.dateFieldControl} accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Opens the native date picker" accessibilityState={{ expanded: pickerOpen }}>
+  return <SquircleView style={styles.dateFieldWrap}>
+    <SquircleView style={styles.dateFieldRow}>
+      <SquirclePressable onPress={() => setPickerOpen(true)} style={styles.dateFieldControl} accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Opens the native date picker" accessibilityState={{ expanded: pickerOpen }}>
         <PageText style={[styles.dateFieldText, !hasDate && styles.dateFieldPlaceholder]}>{hasDate ? pickerValue.toLocaleDateString(undefined, { dateStyle: 'medium' }) : placeholder}</PageText>
         <AppIcon name="calendar" size={17} color={colors.green} />
-      </Pressable>
-      {optional && hasDate && <Pressable onPress={() => { onChange(''); dismissPicker(); }} style={styles.dateFieldClear} accessibilityRole="button" accessibilityLabel={`Clear ${accessibilityLabel}`}><PageText style={styles.dateFieldClearText}>Clear</PageText></Pressable>}
-    </View>
+      </SquirclePressable>
+      {optional && hasDate && <SquirclePressable onPress={() => { onChange(''); dismissPicker(); }} style={styles.dateFieldClear} accessibilityRole="button" accessibilityLabel={`Clear ${accessibilityLabel}`}><PageText style={styles.dateFieldClearText}>Clear</PageText></SquirclePressable>}
+    </SquircleView>
     {Platform.OS === 'android' && pickerOpen ? (
       <DateTimePicker
         value={pickerValue}
@@ -147,30 +138,58 @@ function DateField({ value, onChange, placeholder, accessibilityLabel, optional 
         onDismiss={dismissPicker}
       />
     ) : null}
-  </View>;
+  </SquircleView>;
 }
 
 function EntryRow({ entry, onToggle, isLast, onEdit, onToggleSubtask }: { entry: Entry; onToggle: (id: string) => void; isLast: boolean; onEdit?: () => void; onToggleSubtask?: (entryId: string, subtaskId: string) => void }) {
   const palette = useTheme();
   const colors = palette;  const styles = useThemedStyles(createHomeScreenStyles);
   const reduceMotion = useReducedMotion();
+  const rowLayout = LinearTransition.duration(reduceMotion ? 0 : UI_MOTION.layoutMs).easing(Easing.out(Easing.cubic));
+  const isHabit = entry.type === 'habit';
+  const isTimedRoutineStep = entry.sourceType === 'routine_step' && Boolean(entry.time);
+  const entryLabel = isTimedRoutineStep ? `${entry.time}, ${entry.title}` : entry.title;
+  const hideEdit = entry.type === 'task' && entry.completed;
+  // Completion strikes every line of the title and details, one line after another; the details start 100ms after the title.
+  const [titleLineCount, setTitleLineCount] = useState(1);
+  const [detailLineCount, setDetailLineCount] = useState(1);
+  const strikeMaxStartMs = Math.max((titleLineCount - 1) * STRIKE_LINE_MS, STRIKE_SUBTITLE_DELAY_MS + (detailLineCount - 1) * STRIKE_LINE_MS);
+  // The edit button fades out to the right and back.
+  const editProgress = useSharedValue(hideEdit ? 1 : 0);
+  useEffect(() => {
+    editProgress.value = withTiming(hideEdit ? 1 : 0, { duration: reduceMotion ? 0 : 200, easing: Easing.out(Easing.cubic) });
+  }, [hideEdit, reduceMotion, editProgress]);
+  const editStyle = useAnimatedStyle(() => ({ opacity: 1 - editProgress.value, transform: [{ translateX: editProgress.value * 24 }] }));
   return (
-    <View style={[styles.entryRow, { paddingTop: 4, paddingBottom: 8 }, !isLast && styles.entryRowDivider]}><Pressable onPress={() => onToggle(entry.id)} disabled={entry.status === 'missed'} accessibilityRole="checkbox" accessibilityState={{ checked: entry.completed, disabled: entry.status === 'missed' }} accessibilityLabel={`${entry.type}: ${entry.title}`} style={styles.entryToggle}>
+    <AnimatedSquircleView entering={reduceMotion ? FadeIn.duration(0) : FadeInUp.duration(UI_MOTION.contentEnterMs).withInitialValues({ opacity: 0.82, transform: [{ translateY: 3 }] })} exiting={reduceMotion ? FadeOut.duration(0) : FadeOut.duration(UI_MOTION.contentExitMs)} layout={rowLayout} style={[styles.entryRow, isHabit ? styles.habitEntryCard : isTimedRoutineStep ? styles.dayScheduleEntryRow : { paddingTop: 6, paddingBottom: 10 }, !isHabit && !isLast && styles.entryRowDivider]}><SquirclePressable onPress={() => onToggle(entry.id)} disabled={entry.status === 'missed'} accessibilityRole="checkbox" accessibilityState={{ checked: entry.completed, disabled: entry.status === 'missed' }} accessibilityLabel={`${entry.type}: ${entryLabel}`} style={styles.entryToggle}>
       <AnimatedCheckbox checked={entry.completed} color={entry.completed ? colors.green : palette.controlBorder} size={28} reduceMotion={reduceMotion} />
-      <View style={styles.entryCopy}>
-        <PageText style={[styles.entryTitle, entry.completed && styles.entryTitleDone]}>{entry.title}</PageText>
-        {entry.time || entry.source ? <PageText style={styles.entryMeta}>{entry.time ? `${entry.time}${entry.source ? ` · ${entry.source}` : ''}` : `For ${entry.source}`}</PageText> : null}
-        {entry.details ? <PageText style={[styles.entryMeta, entry.completed && styles.entryTitleDone]}>{entry.details}</PageText> : null}
+      <SquircleView style={styles.entryCopy}>
+        <SquircleView style={styles.entryTitleWrap}><StrikeText style={[styles.entryTitle, entry.completed && styles.entryTitleDone]} completed={entry.completed} color={palette.muted} reduceMotion={reduceMotion} startDelayMs={0} maxStartMs={strikeMaxStartMs} onLineCount={setTitleLineCount}>{isTimedRoutineStep ? `${entry.time} | ${entry.title}` : entry.title}</StrikeText></SquircleView>
+        {!isTimedRoutineStep && (entry.time || entry.source) ? <PageText style={styles.entryMeta}>{entry.time ? `${entry.time}${entry.source ? ` · ${entry.source}` : ''}` : `For ${entry.source}`}</PageText> : null}
+        {entry.details ? <StrikeText style={[styles.entryMeta, entry.completed && styles.entryTitleDone]} completed={entry.completed} color={palette.muted} reduceMotion={reduceMotion} startDelayMs={STRIKE_SUBTITLE_DELAY_MS} maxStartMs={strikeMaxStartMs} onLineCount={setDetailLineCount}>{entry.details}</StrikeText> : null}
         {entry.type !== 'goal' && (entry.targetValueSnapshot ?? entry.targetValue) != null && (entry.targetUnitSnapshot ?? entry.targetUnit) ? <PageText style={styles.entryMeta}>{`${entry.progressValue ?? entry.progressByDate?.[entry.date] ?? 0} / ${entry.targetValueSnapshot ?? entry.targetValue} ${entry.targetUnitSnapshot ?? entry.targetUnit}${getTaskProgressStatus(entry, entry.date) ? ` · ${({ low: 'Meh', mid: 'Okay', high: 'Fantastic' } as const)[getTaskProgressStatus(entry, entry.date)!]}` : ''}`}</PageText> : null}
         {entry.type === 'task' && (entry.taskPrioritySnapshot || entry.taskDueDateSnapshot || entry.taskEstimatedDurationMinutesSnapshot) ? <PageText style={styles.entryMeta}>{[entry.taskPrioritySnapshot ? `${entry.taskPrioritySnapshot} priority` : undefined, entry.taskDueDateSnapshot ? `due ${entry.taskDueDateSnapshot}` : undefined, entry.taskEstimatedDurationMinutesSnapshot ? `${entry.taskEstimatedDurationMinutesSnapshot} min` : undefined].filter(Boolean).join(' · ')}</PageText> : null}
         {entry.status && entry.status !== 'planned' && entry.status !== 'completed' ? <PageText style={styles.entryMeta}>{entry.status[0].toUpperCase() + entry.status.slice(1)}</PageText> : null}
-      </View>
-    </Pressable>{onEdit && !(entry.type === "task" && entry.completed) && <NativeActionButton label="Edit" onPress={onEdit} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.entryEdit} accessibilityLabel={`Edit ${entry.title}`}><PageText style={styles.entryEditText}>Edit</PageText></NativeActionButton>}{entry.subtasksSnapshot?.length ? <View style={styles.subtaskList}><PageText style={styles.entryMeta}>{entry.subtasksSnapshot.filter((item) => item.completed).length} of {entry.subtasksSnapshot.length} steps</PageText>{entry.subtasksSnapshot.map((subtask) => <Pressable key={subtask.id} onPress={() => onToggleSubtask?.(entry.id, subtask.id)} disabled={!onToggleSubtask || occurrenceStatus(entry) !== 'planned'} style={styles.subtaskRow} accessibilityRole="checkbox" accessibilityState={{ checked: subtask.completed, disabled: !onToggleSubtask || occurrenceStatus(entry) !== 'planned' }}><View style={[styles.subtaskCheck, subtask.completed && styles.subtaskCheckDone]}>{subtask.completed && <PageText style={styles.subtaskCheckGlyph}>✓</PageText>}</View><PageText style={[styles.subtaskTitle, subtask.completed && styles.entryTitleDone]}>{subtask.title}</PageText></Pressable>)}</View> : null}</View>
+      </SquircleView>
+      </SquirclePressable>{onEdit && <Animated.View pointerEvents={hideEdit ? 'none' : 'auto'} style={editStyle}><NativeActionButton label="Edit" onPress={onEdit} appearance="secondary" tintColor={colors.green} labelColor={colors.green} style={styles.entryEdit} accessibilityLabel={`Edit ${entry.title}`}><PageText style={styles.entryEditText}>Edit</PageText></NativeActionButton></Animated.View>}{entry.subtasksSnapshot?.length ? <SquircleView style={styles.subtaskList}><PageText style={styles.entryMeta}>{entry.subtasksSnapshot.filter((item) => item.completed).length} of {entry.subtasksSnapshot.length} steps</PageText>{entry.subtasksSnapshot.map((subtask) => <SquirclePressable key={subtask.id} onPress={() => onToggleSubtask?.(entry.id, subtask.id)} disabled={!onToggleSubtask || occurrenceStatus(entry) !== 'planned'} style={styles.subtaskRow} accessibilityRole="checkbox" accessibilityState={{ checked: subtask.completed, disabled: !onToggleSubtask || occurrenceStatus(entry) !== 'planned' }}><SquircleView style={[styles.subtaskCheck, subtask.completed && styles.subtaskCheckDone]}>{subtask.completed && <PageText style={styles.subtaskCheckGlyph}>✓</PageText>}</SquircleView><PageText style={[styles.subtaskTitle, subtask.completed && styles.entryTitleDone]}>{subtask.title}</PageText></SquirclePressable>)}</SquircleView> : null}</AnimatedSquircleView>
   );
 }
 
+const completionStyles = StyleSheet.create({
+  goalTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  goalTitleCopy: { flex: 1 },
+  milestoneCheckContent: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
+});
+
 export type HomeTab = 'today' | 'goals' | 'progress' | 'profile';
 type HomeScreenProps = { initialTab?: HomeTab; showTabBar?: boolean };
+
+// iOS bottom sheets are native and handle the keyboard themselves; an extra
+// KeyboardAvoidingView adds dead space and clips the sheet footer there.
+function SheetKeyboard({ children }: { children: import('react').ReactNode }) {
+  if (Platform.OS === 'ios') return <View style={{ flex: 1 }}>{children}</View>;
+  return <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>{children}</KeyboardAvoidingView>;
+}
 
 export default function HomeScreen({ initialTab = 'today', showTabBar = true }: HomeScreenProps) {
   const palette = useTheme();
@@ -184,11 +203,29 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   const hasSyncConsent = Boolean(account.user && onboarding?.syncConsent && onboarding.syncConsentUserId === account.user.id);
   const [syncRecoverySnapshots, setSyncRecoverySnapshots] = useState<RecoverySnapshot[]>([]);
   const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
+  // The selected indicator glides between tab slots, measured from the bar's width.
+  const [tabBarWidth, setTabBarWidth] = useState(0);
+  const tabSlotWidth = tabBarWidth > 0 ? (tabBarWidth - TAB_BAR_PADDING * 2) / tabs.length : 0;
+  const tabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+  const tabIndicatorIndex = useSharedValue(tabIndex);
+  useEffect(() => {
+    tabIndicatorIndex.value = withTiming(tabIndex, { duration: reduceMotion ? 0 : UI_MOTION.tabIndicatorMs, easing: Easing.inOut(Easing.cubic) });
+  }, [tabIndex, reduceMotion, tabIndicatorIndex]);
+  const tabIndicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tabIndicatorIndex.value * tabSlotWidth }] }), [tabSlotWidth]);
   const [openedCheckInDate, setOpenedCheckInDate] = useState<string | null>(null);
   const [progressRangeId, setProgressRangeId] = useState<ProgressRangeId>('7d');
   const [showAllAchievements, setShowAllAchievements] = useState(false);
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState<string[]>([]);
   const [appliedRecommendationIds, setAppliedRecommendationIds] = useState<string[]>([]);
+  // Ease-in-out for the "A few ideas" section, its rows, and the content pushed down below it.
+  // Strong ease-out for entrances, ease-in-out for on-screen movement; exits are shorter than entrances.
+  const easeOutStrong = Easing.bezier(0.23, 1, 0.32, 1);
+  const easeInOutStrong = Easing.bezier(0.77, 0, 0.175, 1);
+  const previousRecommendationCount = useRef(0);
+  const sectionEnter = reduceMotion
+    ? FadeIn.duration(0)
+    : FadeInUp.duration(UI_MOTION.sectionMs).easing(easeOutStrong).withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] });
+  const rowExit = reduceMotion ? FadeOut.duration(0) : FadeOutUp.duration(UI_MOTION.rowExitMs).easing(easeOutStrong);
   const scrollRef = useRef<ScrollView>(null);
   const guestWorkspaceSignInTrayRef = useRef<GuestWorkspaceSignInTrayHandle>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -276,6 +313,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   const reminderTimeInput = useRef<NativeTextInput>(null);
   const [notificationTime, setNotificationTime] = useState('');
   const [notificationRepeat, setNotificationRepeat] = useState<NotificationReminder['repeat']>('once');
+  const [notificationImportance, setNotificationImportance] = useState<'normal' | 'important'>('normal');
   const [notificationDate, setNotificationDate] = useState(dateKey());
   const didSyncReminders = useRef(false);
   const insets = useSafeAreaInsets();
@@ -286,7 +324,8 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   const scrollContentBottomPadding = showTabBar
     ? tabBarReservedBottomSpace + LayoutSpacing.section
     : insets.bottom + LayoutSpacing.section;
-  const stackRecommendationActions = windowWidth < 364 || fontScale > 1.15;
+  // iOS keeps the two actions side by side (stretched) unless the screen is very narrow, matching Android.
+  const stackRecommendationActions = Platform.OS === 'ios' ? windowWidth < 330 : windowWidth < 364 || fontScale > 1.15;
   const reduceMotion = useReducedMotion();
   useEffect(() => {
     let active = true;
@@ -321,7 +360,10 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
     ],
   }), [collapsedTitleCenterY, compactHeaderTitleScale, expandedTitleCenterY, headerCollapseProgress]);
   const headerBlurStyle = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, headerCollapseDistance], [expandedHeaderHeight, collapsedHeaderHeight], Extrapolation.CLAMP),
+    // Extend Android's gradient beneath the compact title so scrolled text is
+    // eased out below the title instead of showing through the header.
+    height: interpolate(scrollY.value, [0, headerCollapseDistance], [expandedHeaderHeight, collapsedHeaderHeight], Extrapolation.CLAMP)
+      + (Platform.OS === 'android' ? 72 : 0),
   }), [collapsedHeaderHeight, expandedHeaderHeight, headerCollapseDistance, scrollY]);
   const todayExpandedTitleStyle = useAnimatedStyle(() => ({
     opacity: headerCollapseProgress.value < 0.5 ? 1 : 0,
@@ -738,7 +780,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
       if (!isValidDateKey(notificationDate)) { setNotificationStatus('Choose a valid date.', 'error'); return; }
       if (new Date(`${notificationDate}T${notificationTime}:00`).getTime() <= Date.now()) { setNotificationStatus('Choose a future date and time.', 'error'); reminderTimeInput.current?.focus(); return; }
     }
-    const reminder: NotificationReminder = { id: pendingReminderId ?? createOccurrenceId('reminder'), title, time: notificationTime, repeat: notificationRepeat, ...(notificationRepeat === 'once' ? { date: notificationDate } : {}) };
+    const reminder: NotificationReminder = { id: pendingReminderId ?? createOccurrenceId('reminder'), title, time: notificationTime, repeat: notificationRepeat, importance: notificationImportance, ...(notificationRepeat === 'once' ? { date: notificationDate } : {}) };
     setPendingReminderId(reminder.id);
     setSavingReminder(true);
     const result = await applyNotificationReminders([...reminders.filter((item) => item.id !== reminder.id), reminder], true);
@@ -746,7 +788,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
     if (result === 'failed') return;
     setPendingReminderId(null);
     setNotificationFormOpen(false);
-    setNotificationTitle(''); setNotificationTime(''); setNotificationRepeat('once'); setNotificationDate(dateKey());
+    setNotificationTitle(''); setNotificationTime(''); setNotificationRepeat('once'); setNotificationImportance('normal'); setNotificationDate(dateKey());
     if (result === 'scheduled') toast.success('Reminder scheduled', { description: 'Saved on this device.' });
   };
   const removeNotificationReminder = async (id: string) => {
@@ -948,130 +990,152 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
       { cancelable: true },
     );
   };
+  // Removal: the row fades out first, then the container and the content below resize.
+  // Addition: the container resizes first, then the new row fades in.
+  const recommendationsRemoved = recommendations.length < previousRecommendationCount.current;
+  const sectionLayout = LinearTransition.duration(reduceMotion ? 0 : UI_MOTION.sectionMs)
+    .delay(recommendationsRemoved && !reduceMotion ? UI_MOTION.rowExitMs : 0)
+    .easing(easeInOutStrong);
+  const rowEnter = (index: number) => reduceMotion
+    ? FadeIn.duration(0)
+    : FadeInUp.duration(UI_MOTION.sectionMs)
+      .delay((recommendationsRemoved ? 0 : UI_MOTION.sectionMs) + index * 60)
+      .easing(easeOutStrong)
+      .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] });
+  useEffect(() => {
+    previousRecommendationCount.current = recommendations.length;
+  });
   return (
     <VisualStyleContext.Provider value={visualStyle}>
-    <View style={[styles.root, { minHeight: windowHeight }]}> 
-      <View style={styles.tabScrollViewport}>
-      <Animated.ScrollView key={activeTab} ref={scrollRef} style={styles.tabScrollView} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: expandedHeaderHeight + 16, paddingBottom: scrollContentBottomPadding }]}>
+    <SquircleView style={[styles.root, { minHeight: windowHeight }]}>
+      <SquircleView style={styles.tabScrollViewport}>
+      <Animated.ScrollView key={activeTab} ref={scrollRef} entering={showTabBar && !reduceMotion ? FadeInUp.duration(UI_MOTION.contentEnterMs).withInitialValues({ opacity: 0.84, transform: [{ translateY: 4 }] }) : undefined} exiting={showTabBar && !reduceMotion ? FadeOut.duration(UI_MOTION.contentExitMs) : undefined} style={styles.tabScrollView} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: expandedHeaderHeight + 16, paddingBottom: scrollContentBottomPadding }]}>
         <PageText style={styles.sectionSubtitle}>{activeTab === 'today' ? 'See your plan and record what you did.' : activeTab === 'goals' ? 'Set goals and track the steps toward them.' : activeTab === 'progress' ? 'Review recorded activity for the selected dates.' : 'Manage your account, reminders, and appearance.'}</PageText>
-        {activeTab === 'today' && <Animated.View entering={FadeIn.duration(reduceMotion ? 80 : 150)} style={styles.weekStrip}>
+        {activeTab === 'today' && <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 80 : 150)} style={styles.weekStrip}>
           {days.map((day, index) => {
             const weekday = index;
             const date = shiftDateKey(weekStart, weekday);
             const dateObject = new Date(`${date}T12:00:00`);
             const isSelected = selectedDate === date;
             const isToday = date === dateKey();
-            return <SquirclePressable key={`${day}-${index}`} pill onPress={() => selectDate(date)} accessibilityRole="button" accessibilityState={{ selected: isSelected }} accessibilityLabel={dateObject.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} style={[styles.dayPill, isSelected && styles.dayPillSelected]}>
-              <PageText style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>{day}</PageText>
-              <PageText style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>{dateObject.getDate()}</PageText>
-              <View style={[styles.dayDot, isToday && styles.dayDotToday]} />
-            </SquirclePressable>;
+            return <View key={`${day}-${index}`} style={[styles.dayPillSlot, isToday && styles.dayPillTodaySlot]}>
+              {isToday && <View pointerEvents="none" style={styles.dayTodayRing} />}
+              <SquirclePressable onPress={() => selectDate(date)} accessibilityRole="button" accessibilityState={{ selected: isSelected }} accessibilityLabel={dateObject.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} style={[styles.dayPill, isToday && !isSelected && styles.dayPillToday, isSelected && styles.dayPillSelected]}>
+                {isSelected && <AnimatedSquircleView pointerEvents="none" entering={reduceMotion ? FadeIn.duration(0) : FadeIn.delay(UI_MOTION.selectionDelayMs).duration(UI_MOTION.selectionMs).easing(Easing.inOut(Easing.ease)).withInitialValues({ opacity: 0 })} exiting={reduceMotion ? FadeOut.duration(0) : FadeOut.delay(UI_MOTION.selectionDelayMs).duration(UI_MOTION.selectionMs).easing(Easing.inOut(Easing.ease))} style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill, backgroundColor: colors.green }]} />}
+                <PageText style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>{day}</PageText>
+                <PageText style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>{dateObject.getDate()}</PageText>
+              </SquirclePressable>
+            </View>;
           })}
-        </Animated.View>}
+        </AnimatedSquircleView>}
 
-        {activeTab === 'today' && recommendations.length > 0 && <SquircleCard style={styles.recommendationsCard}>
-          <View style={styles.chartHeading}><View><PageText style={styles.dateLabel}>BASED ON YOUR RECENT PATTERNS</PageText><PageText display style={styles.sectionTitle}>A few ideas</PageText></View><View style={styles.chartBadge}><AppIcon name="sparkle" style={visualStyle} size={16} color={colors.green} /></View></View>
-          {recommendations.map((recommendation) => <View key={recommendation.id} style={styles.recommendationRow}>
+        {activeTab === 'today' && recommendations.length > 0 && <Animated.View entering={sectionEnter} exiting={FadeOut.duration(UI_MOTION.contentExitMs)} layout={sectionLayout}><SquircleCard style={styles.recommendationsCard}>
+          <SquircleView style={styles.chartHeading}><SquircleView><PageText style={styles.dateLabel}>BASED ON YOUR RECENT PATTERNS</PageText><PageText display heading={false} style={styles.sectionTitle}>A few ideas</PageText></SquircleView><SquircleView style={styles.chartBadge}><AppIcon name="sparkle" style={visualStyle} size={16} color={colors.green} /></SquircleView></SquircleView>
+          {recommendations.map((recommendation, index) => <Animated.View key={recommendation.id} entering={rowEnter(index)} exiting={rowExit} layout={sectionLayout}><SquircleView style={styles.recommendationRow}>
             <PageText display style={styles.recommendationTitle}>{recommendation.title}</PageText>
             <PageText style={styles.sectionSubtitle}>{recommendation.evidence}</PageText>
-            <View style={[styles.recommendationActions, stackRecommendationActions && styles.recommendationActionsStacked]}>
-              <NativeActionButton width={stackRecommendationActions ? 'full' : 'content'} label={recommendation.action} onPress={() => { setAppliedRecommendationIds((ids) => [...ids, recommendation.id]); recommendation.apply(); }} appearance="prominent" tintColor={colors.green} labelColor={palette.onAccent} style={[styles.recommendationApply, stackRecommendationActions && styles.recommendationButtonStacked]}>
-                <PageText style={styles.recommendationApplyText}>{recommendation.action}</PageText>
-              </NativeActionButton>
-              <NativeActionButton width={stackRecommendationActions ? 'full' : 'content'} label="Dismiss" onPress={recommendation.dismiss} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={[styles.recommendationDismiss, stackRecommendationActions && styles.recommendationButtonStacked]} accessibilityLabel={`Dismiss recommendation: ${recommendation.title}`}>
-                <PageText style={styles.recommendationDismissText}>Dismiss</PageText>
-              </NativeActionButton>
-            </View>
-          </View>)}
-        </SquircleCard>}
+            <SquircleView style={[styles.recommendationActions, stackRecommendationActions && styles.recommendationActionsStacked]}>
+              <View style={stackRecommendationActions ? styles.recommendationSlotStacked : styles.recommendationApplySlot}>
+                <SquirclePressable onPress={() => { setAppliedRecommendationIds((ids) => [...ids, recommendation.id]); recommendation.apply(); }} accessibilityRole="button" accessibilityLabel={recommendation.action} style={({ pressed }) => [styles.recommendationApply, pressed && styles.recommendationPressed]}>
+                  <PageText style={styles.recommendationApplyText}>{recommendation.action}</PageText>
+                </SquirclePressable>
+              </View>
+              <View style={stackRecommendationActions ? styles.recommendationSlotStacked : styles.recommendationDismissSlot}>
+                <SquirclePressable onPress={recommendation.dismiss} accessibilityRole="button" accessibilityLabel={`Dismiss recommendation: ${recommendation.title}`} style={({ pressed }) => [styles.recommendationDismiss, pressed && styles.recommendationPressed]}>
+                  <PageText style={styles.recommendationDismissText}>Dismiss</PageText>
+                </SquirclePressable>
+              </View>
+            </SquircleView>
+          </SquircleView></Animated.View>)}
+        </SquircleCard></Animated.View>}
 
-        {activeTab === 'today' && (daySchedulesForDate.length ? <>{daySchedulesForDate.map((daySchedule) => {
+        <Animated.View layout={sectionLayout}>{activeTab === 'today' && (daySchedulesForDate.length ? <>{daySchedulesForDate.map((daySchedule) => {
           const routineEntries = scheduledEntries.filter((entry) => entry.scheduleId === daySchedule.id);
           const completedRoutineEntries = routineEntries.filter((entry) => isDone(entry)).length;
-          return <View key={daySchedule.id} style={styles.dayScheduleSection}>
-            <View style={styles.dayScheduleHeading}><View style={styles.entryCopy}><PageText style={styles.dateLabel}>ROUTINE</PageText><PageText display style={styles.dayScheduleTitle}>{daySchedule.title}</PageText><PageText style={styles.sectionSubtitle}>{completedRoutineEntries} of {routineEntries.length} routine steps complete</PageText></View><NativeActionButton label="" systemImage="arrow.right" appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => router.push({ pathname: '/day-template-detail', params: { id: daySchedule.id } })} style={styles.dayScheduleEdit} accessibilityLabel={`Edit ${daySchedule.title}`}><AppIcon name="arrow" style={visualStyle} size={17} color={colors.green} /></NativeActionButton></View>
+          return <SquircleView key={daySchedule.id} style={styles.dayScheduleSection}>
+            <SquircleView style={styles.dayScheduleHeading}><SquircleView style={styles.dayScheduleHeadingCopy}><PageText style={styles.dateLabel}>ROUTINE</PageText><PageText display style={styles.dayScheduleTitle}>{daySchedule.title}</PageText><PageText style={styles.sectionSubtitle}>{completedRoutineEntries} of {routineEntries.length} routine steps complete</PageText></SquircleView><NativeActionButton label="" systemImage="arrow.right" appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => router.push({ pathname: '/day-template-detail', params: { id: daySchedule.id } })} style={styles.dayScheduleEdit} accessibilityLabel={`Edit ${daySchedule.title}`}><AppIcon name="arrow" style={visualStyle} size={17} color={colors.green} /></NativeActionButton></SquircleView>
             {routineEntries.map((entry, index) => <EntryRow key={entry.id} entry={{ ...entry, completed: isDone(entry) }} onToggle={toggleEntry} isLast={index === routineEntries.length - 1} onEdit={() => openEntryEdit(entry)} />)}
-          </View>;
-        })}</> : <SquirclePressable onPress={() => router.push('/templates')} style={({ pressed }) => [styles.dayScheduleEmpty, styles.flatListPrompt, pressed && { backgroundColor: palette.pressed }]} accessibilityRole="button" accessibilityLabel={`Choose a ${selectedDayType} day plan`}><View style={styles.emptyGlyph}><AppIcon name="calendar" style={visualStyle} size={19} color={colors.green} /></View><View style={styles.entryCopy}><PageText display style={styles.emptyTitle}>Add a {selectedDayType} rhythm</PageText><PageText style={styles.emptySubtitle}>A routine groups actions into a daily plan.</PageText></View><AppIcon name="arrow" style={visualStyle} size={17} color={colors.green} /></SquirclePressable>)}
+          </SquircleView>;
+        })}</> : <SquirclePressable onPress={() => router.push('/templates')} style={({ pressed }) => [styles.dayScheduleEmpty, styles.flatListPrompt, pressed && { backgroundColor: palette.pressed }]} accessibilityRole="button" accessibilityLabel={`Choose a ${selectedDayType} day plan`}><SquircleView style={styles.emptyGlyph}><AppIcon name="calendar" style={visualStyle} size={19} color={colors.green} /></SquircleView><SquircleView style={styles.entryCopy}><PageText display heading={false} style={styles.emptyTitle}>Add a {selectedDayType} rhythm</PageText><PageText style={styles.emptySubtitle}>A routine groups actions into a daily plan.</PageText></SquircleView><AppIcon name="arrow" style={visualStyle} size={17} color={colors.green} /></SquirclePressable>)}</Animated.View>
 
-        {activeTab === 'today' && unresolvedMissedEntries.length > 0 && <SquircleCard style={styles.recoveryCard}>
-          <PageText style={styles.dateLabel}>A GENTLE RESET</PageText><PageText display style={styles.sectionTitle}>Plans that need a next step</PageText><PageText style={styles.sectionSubtitle}>Choose what would help now. You can reschedule, adjust, pause, or leave the plan as it is.</PageText>
-          {unresolvedMissedEntries.map((entry) => <View key={entry.id} style={styles.recoveryQueueRow}>
-            <View style={styles.entryCopy}><PageText style={styles.entryTitle}>{entry.title}</PageText><PageText style={styles.entryMeta}>{new Date(`${entry.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{entry.missedReason ? ` · ${missedReasonLabel(entry.missedReason)}` : ''}</PageText></View>
+        <Animated.View layout={sectionLayout}>{activeTab === 'today' && unresolvedMissedEntries.length > 0 && <SquircleCard style={styles.recoveryCard}>
+          <PageText style={styles.dateLabel}>A GENTLE RESET</PageText><PageText display heading style={styles.sectionTitle}>Plans that need a next step</PageText><PageText style={styles.sectionSubtitle}>Choose what would help now. You can reschedule, adjust, pause, or leave the plan as it is.</PageText>
+          {unresolvedMissedEntries.map((entry) => <SquircleView key={entry.id} style={styles.recoveryQueueRow}>
+            <SquircleView style={styles.entryCopy}><PageText style={styles.entryTitle}>{entry.title}</PageText><PageText style={styles.entryMeta}>{new Date(`${entry.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{entry.missedReason ? ` · ${missedReasonLabel(entry.missedReason)}` : ''}</PageText></SquircleView>
               <NativeActionButton label="Reflect" onPress={() => openEntryEdit(entry)} appearance="plain" tintColor={colors.green} labelColor={colors.green} accessibilityLabel={`Reflect and recover from missed ${entry.title}`} style={styles.entryEdit}><PageText style={styles.entryEditText}>Reflect</PageText></NativeActionButton>
-          </View>)}
-        </SquircleCard>}
+          </SquircleView>)}
+        </SquircleCard>}</Animated.View>
 
-        {activeTab === 'today' && (
-          <Animated.View entering={FadeIn.duration(reduceMotion ? 100 : 190)}>
-            <View style={styles.sectionHeaderCompact}>
-              <View><PageText display style={styles.sectionTitle}>Things to do</PageText><PageText style={styles.sectionSubtitle}>{tasks.length ? `${completed} of ${tasks.length} completed` : 'Your daily checklist'}</PageText></View>
-              <NativeActionButton label="" systemImage="plus" appearance="bordered" tintColor={colors.green} labelColor={colors.green} onPress={() => openNew('task')} accessibilityLabel="Add a task" style={styles.smallAdd}><AppIcon name="add" style={visualStyle} size={17} color={colors.green} /></NativeActionButton>
-            </View>
+        <Animated.View layout={sectionLayout}>{activeTab === 'today' && (
+          <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 100 : 190)}>
+            <SquircleView style={styles.sectionHeaderCompact}>
+              <SquircleView><PageText display heading style={styles.sectionTitle}>Things to do</PageText><PageText style={styles.sectionSubtitle}>{tasks.length ? `${completed} of ${tasks.length} completed` : 'Your daily checklist'}</PageText></SquircleView>
+              <NativeActionButton label="" systemImage="plus" iosHeaderStyle="back" appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => openNew('task')} accessibilityLabel="Add a task" style={styles.smallAdd}><AppIcon name="add" style={visualStyle} size={17} color={colors.green} /></NativeActionButton>
+            </SquircleView>
             {tasks.length ? tasks.map((entry, index) => <EntryRow key={entry.id} entry={{ ...entry, completed: isDone(entry) }} onToggle={toggleEntry} onToggleSubtask={toggleSubtask} isLast={index === tasks.length - 1} onEdit={() => openEntryEdit(entry)} />) : <EmptyState layout="row" title="Nothing planned yet" description="Add a task and check it off when done." onPress={() => openNew('task')} actionLabel="Add a task" />}
-            <View style={styles.sectionHeaderCompact}>
-              <View><PageText display style={styles.sectionTitle}>Habits & practices</PageText><PageText style={styles.sectionSubtitle}>{habits.length ? 'Actions you repeat on chosen days.' : 'Add an action you want to repeat.'}</PageText></View>
-              <NativeActionButton label="" systemImage="plus" appearance="bordered" tintColor={colors.green} labelColor={colors.green} onPress={() => openNew('habit')} accessibilityLabel="Add a habit" style={styles.smallAdd}><AppIcon name="add" style={visualStyle} size={17} color={colors.green} /></NativeActionButton>
-            </View>
+            <SquircleView style={styles.sectionHeaderCompact}>
+              <SquircleView><PageText display heading style={styles.sectionTitle}>Habits & practices</PageText><PageText style={styles.sectionSubtitle}>{habits.length ? 'Actions you repeat on chosen days.' : 'Add an action you want to repeat.'}</PageText></SquircleView>
+              <NativeActionButton label="" systemImage="plus" iosHeaderStyle="back" appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => openNew('habit')} accessibilityLabel="Add a habit" style={styles.smallAdd}><AppIcon name="add" style={visualStyle} size={17} color={colors.green} /></NativeActionButton>
+            </SquircleView>
             {habits.length ? habits.map((entry, index) => <EntryRow key={entry.id} entry={{ ...entry, completed: isDone(entry) }} onToggle={toggleEntry} isLast={index === habits.length - 1} onEdit={() => openEntryEdit(entry)} />) : <EmptyState layout="row" icon="focus" title="No habits yet" description="Add a habit and choose its repeat days." onPress={() => openNew('habit')} actionLabel="Add a habit" />}
 
 
-          </Animated.View>
-        )}
+          </AnimatedSquircleView>
+        )}</Animated.View>
 
 
-        {activeTab === 'goals' && <View style={styles.tabPage}>
-          <PageText style={styles.dateLabel}>YOUR DIRECTION</PageText><PageText display style={styles.pageHeading}>Choose your next goal.</PageText><PageText style={styles.pageIntro}>A goal is an outcome. Link tasks and habits to track your steps.</PageText>
+        {activeTab === 'goals' && <SquircleView style={styles.tabPage}>
+          <PageText style={styles.dateLabel}>YOUR DIRECTION</PageText><PageText display heading style={styles.pageHeading}>Choose your next goal.</PageText><PageText style={styles.pageIntro}>A goal is an outcome. Link tasks and habits to track your steps.</PageText>
         <SquircleCard style={styles.progressInsightCard}>
-            <View style={styles.chartHeading}><View><PageText display style={styles.sectionTitle}>Commitments</PageText><PageText style={styles.sectionSubtitle}>Track a target and a deadline.</PageText></View><NativeActionButton label={commitmentFormOpen ? 'Close' : 'Add'} systemImage={commitmentFormOpen ? 'xmark' : 'plus'} appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => { setCommitmentFormOpen((open) => !open); setCommitmentDetailsOpen(false); }} style={styles.inlineAction}><PageText style={styles.inlineActionText}>{commitmentFormOpen ? 'Close' : 'Add'}</PageText></NativeActionButton></View>
+            <SquircleView style={styles.chartHeading}><SquircleView><PageText display heading style={styles.sectionTitle}>Commitments</PageText><PageText style={styles.sectionSubtitle}>Track a target and a deadline.</PageText></SquircleView><NativeActionButton label={commitmentFormOpen ? 'Close' : 'Add'} systemImage={commitmentFormOpen ? 'xmark' : 'plus'} appearance="plain" tintColor={colors.green} labelColor={colors.green} onPress={() => { setCommitmentFormOpen((open) => !open); setCommitmentDetailsOpen(false); }} style={styles.inlineAction}><PageText style={styles.inlineActionText}>{commitmentFormOpen ? 'Close' : 'Add'}</PageText></NativeActionButton></SquircleView>
             {commitmentMetrics.map((commitment) => {
               const linkedGoal = commitment.goalId ? plans.find((goal) => goal.id === commitment.goalId) : undefined;
               const linkedTitle = commitment.linkedSourceType === 'task' ? taskDefinitions.find((definition) => definition.id === commitment.linkedSourceId)?.title : commitment.linkedSourceType === 'habit' ? habitDefinitions.find((definition) => definition.id === commitment.linkedSourceId)?.title : undefined;
               const overdue = commitment.deadline < dateKey();
               const expanded = expandedCommitmentIds.includes(commitment.id);
               const hasDetails = Boolean(linkedGoal || linkedTitle || commitment.why || commitment.reward || commitment.consequence);
-              return <View key={commitment.id} style={styles.commitmentRow}>
-                <View style={styles.entryCopy}>
+              return <SquircleView key={commitment.id} style={styles.commitmentRow}>
+                <SquircleView style={styles.entryCopy}>
                   <PageText style={styles.entryTitle}>{commitment.title}</PageText>
                   <PageText style={styles.entryMeta}>{`${commitment.target}${commitment.timeframe ? ` · ${commitment.timeframe}` : ''} · due ${commitment.deadline}${overdue ? ' · past deadline' : ''}`}</PageText>
                   {commitment.percentage != null && <PageText style={styles.entryMeta}>{`${commitment.completedActions} of ${commitment.requiredActions} linked actions · ${commitment.remainingActions} remaining · ${commitment.percentage}%`}</PageText>}
-                  {expanded && <View style={styles.commitmentDetails}>
+                  {expanded && <SquircleView style={styles.commitmentDetails}>
                     {linkedGoal && <PageText style={styles.entryMeta}>Goal: {linkedGoal.title}</PageText>}
                     {linkedTitle && <PageText style={styles.entryMeta}>{`Linked ${commitment.linkedSourceType}: ${linkedTitle}`}</PageText>}
                     {commitment.why ? <PageText style={styles.entryMeta}>Why: {commitment.why}</PageText> : null}
                     {commitment.reward ? <PageText style={styles.entryMeta}>Reward: {commitment.reward}</PageText> : null}
                     {commitment.consequence ? <PageText style={styles.entryMeta}>Accountability: {commitment.consequence}</PageText> : null}
-                  </View>}
-                </View>
-                <View style={styles.commitmentActions}>
+                  </SquircleView>}
+                </SquircleView>
+                <SquircleView style={styles.commitmentActions}>
                   {hasDetails && <NativeActionButton label={expanded ? 'Less' : 'Details'} onPress={() => setExpandedCommitmentIds((current) => expanded ? current.filter((id) => id !== commitment.id) : [...current, commitment.id])} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.entryEdit}><PageText style={styles.entryEditText}>{expanded ? 'Less' : 'Details'}</PageText></NativeActionButton>}
                   <NativeActionButton label="Remove" systemImage="trash" appearance="plain" tintColor={palette.muted} labelColor={palette.muted} onPress={() => { setCommitments((items) => items.filter((candidate) => candidate.id !== commitment.id)); setExpandedCommitmentIds((current) => current.filter((id) => id !== commitment.id)); }} accessibilityLabel={`Remove commitment ${commitment.title}`} style={styles.entryEdit}><PageText style={styles.entryEditText}>Remove</PageText></NativeActionButton>
-                </View>
-              </View>;
+                </SquircleView>
+              </SquircleView>;
             })}
           </SquircleCard>
 
-          <View style={styles.areaHeadingRow}><PageText display style={styles.sectionTitle}>Life areas</PageText><NativeActionButton label="Manage" onPress={() => setAreaManagerOpen(true)} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>Manage</PageText></NativeActionButton></View>
+          <SquircleView style={styles.areaHeadingRow}><PageText display heading style={styles.sectionTitle}>Life areas</PageText><NativeActionButton label="Manage" onPress={() => setAreaManagerOpen(true)} appearance="secondary" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>Manage</PageText></NativeActionButton></SquircleView>
           {enabledLifeAreas.length ? <ProgressiveHorizontalScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={styles.areaSummaryRow}>
-            {enabledLifeAreas.map((area) => { const summary = getGoalAreaSummary(area.id); return <SquirclePressable exactSquircle key={area.id} onPress={() => setSelectedAreaFilter(selectedAreaFilter === area.id ? 'all' : area.id)} style={[styles.areaSummaryCard, selectedAreaFilter === area.id && styles.areaSummaryCardSelected]} accessibilityRole="button" accessibilityState={{ selected: selectedAreaFilter === area.id }}><View style={styles.areaSummaryIcon}><AppIcon name={area.icon} style={visualStyle} size={15} color={colors.green} /></View><PageText style={styles.areaSummaryTitle}>{area.label}</PageText><PageText style={styles.areaSummaryCaption}>{summary.activeCount} active · {summary.completedCount} done</PageText>{summary.average != null && <PageText style={styles.areaSummaryProgress}>{summary.average}% average progress</PageText>}</SquirclePressable>; })}
+            {enabledLifeAreas.map((area) => { const summary = getGoalAreaSummary(area.id); return <SquirclePressable key={area.id} onPress={() => setSelectedAreaFilter(selectedAreaFilter === area.id ? 'all' : area.id)} style={[styles.areaSummaryCard, selectedAreaFilter === area.id && styles.areaSummaryCardSelected]} accessibilityRole="button" accessibilityState={{ selected: selectedAreaFilter === area.id }}><SquircleView style={styles.areaSummaryIcon}><AppIcon name={area.icon} style={visualStyle} size={15} color={colors.green} /></SquircleView><PageText style={styles.areaSummaryTitle}>{area.label}</PageText><PageText style={styles.areaSummaryCaption}>{summary.activeCount} active · {summary.completedCount} done</PageText>{summary.average != null && <PageText style={styles.areaSummaryProgress}>{summary.average}% average progress</PageText>}</SquirclePressable>; })}
           </ProgressiveHorizontalScrollView> : <SquircleCard style={styles.emptyAreaState}>
-            <PageText display style={styles.emptyAreaTitle}>No life areas selected</PageText>
+            <PageText display heading={false} style={styles.emptyAreaTitle}>No life areas selected</PageText>
             <PageText style={styles.emptyAreaHint}>Choose an area or add one that fits your life.</PageText>
-            <NativeActionButton label="Choose or add a life area" systemImage="plus" onPress={() => setAreaManagerOpen(true)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.emptyAreaButton}><PageText style={styles.goalActionText}>Choose or add a life area</PageText></NativeActionButton>
+            <NativeActionButton label="Choose or add a life area" systemImage="plus" onPress={() => setAreaManagerOpen(true)} appearance="secondary" tintColor={colors.green} labelColor={colors.green} style={styles.emptyAreaButton}><PageText style={styles.goalActionText}>Choose or add a life area</PageText></NativeActionButton>
           </SquircleCard>}
-          <View style={styles.areaHeadingRow}>
-            <PageText display style={styles.sectionTitle}>{selectedAreaFilter === 'all' ? 'Your goals' : lifeAreas.find((area) => area.id === selectedAreaFilter)?.label ?? 'Your goals'}</PageText>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: LayoutSpacing.control }}>
+          <SquircleView style={styles.areaHeadingRow}>
+            <PageText display heading style={styles.sectionTitle}>{selectedAreaFilter === 'all' ? 'Your goals' : lifeAreas.find((area) => area.id === selectedAreaFilter)?.label ?? 'Your goals'}</PageText>
+            <SquircleView style={{ flexDirection: 'row', alignItems: 'center', gap: LayoutSpacing.control }}>
               {selectedAreaFilter !== 'all' && <NativeActionButton label="Show all" onPress={() => setSelectedAreaFilter('all')} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>Show all</PageText></NativeActionButton>}
-              <SquirclePressable onPress={() => openGoalEdit()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Add a goal"><AppIcon name="add" style={visualStyle} size={18} color={colors.green} /></SquirclePressable>
-            </View>
-          </View>
-          {visibleGoalPlans.length ? visibleGoalPlans.map((plan) => { const related = goalEntriesByPlan.get(plan.id) ?? []; const checked = related.filter((entry) => isDone(entry)).length; const goalStatus = getGoalProgressStatus(plan); const statusLabel = goalStatus ? ({ low: 'Meh', mid: 'Okay', high: 'Fantastic' } as const)[goalStatus] : undefined; const status = plan.status ?? 'active'; const completedGoal = status === 'completed'; const qualitativeProgress = getQualitativeProgress(plan); const area = lifeAreas.find((item) => item.id === plan.lifeAreaId); const allowed: GoalLifecycleStatus[] = status === 'draft' ? ['active', 'abandoned', 'archived'] : status === 'active' ? ['paused', 'completed', 'abandoned', 'archived'] : status === 'paused' ? ['active', 'completed', 'abandoned', 'archived'] : status === 'archived' ? ['active'] : ['active', 'archived']; return <SquircleCard key={plan.id} style={styles.goalCard}><View style={styles.goalCardHeading}><View style={styles.goalNudgeIcon}><AppIcon name="goals" style={visualStyle} size={19} color={colors.green} /></View><View style={styles.entryCopy}><PageText display style={[styles.goalCardTitle, completedGoal && styles.entryTitleDone]}>{plan.title}</PageText><PageText style={styles.emptySubtitle}>{area?.label ?? 'Unassigned area'} · {status[0].toUpperCase() + status.slice(1)} · {plan.priority ?? 'medium'} priority</PageText>{plan.description ? <PageText style={[styles.emptySubtitle, completedGoal && styles.entryTitleDone]}>{plan.description}</PageText> : null}{plan.firstStep ? <PageText style={styles.emptySubtitle}>First step: {plan.firstStep}</PageText> : null}</View></View>{plan.why ? <PageText style={styles.goalProgress}>Why this matters: {plan.why}</PageText> : null}{plan.targetType === 'quantitative' && plan.targetValue != null ? <><PageText style={styles.goalProgress}>{`${plan.progressValue ?? 0} / ${plan.targetValue} ${plan.targetUnit || 'unit needed'}${statusLabel ? ` · ${statusLabel}` : ''}`}</PageText>{plan.targetUnit && <View style={styles.goalActions}><NativeActionButton label="" systemImage="minus" onPress={() => updateGoalProgress(plan.id, -1)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction} accessibilityLabel="Decrease goal progress"><PageText style={styles.goalActionText}>−</PageText></NativeActionButton><NativeActionButton label={`+1 ${plan.targetUnit}`} onPress={() => updateGoalProgress(plan.id, 1)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction} accessibilityLabel="Increase goal progress"><PageText style={styles.goalActionText}>+1 {plan.targetUnit}</PageText></NativeActionButton></View>}</> : <PageText style={styles.goalProgress}>{qualitativeProgress == null ? 'Qualitative goal · add milestones or a progress estimate' : `Qualitative progress · ${qualitativeProgress}%`}</PageText>}<PageText style={styles.goalProgress}>{plan.startDate ? `Started ${plan.startDate}` : ''}{plan.targetDate ? ` · Target ${plan.targetDate}` : ''}</PageText><PageText style={styles.goalProgress}>{related.length ? `${checked} of ${related.length} linked actions done on ${selectedDate === dateKey() ? 'today' : selectedDateLabel}` : 'No actions linked yet'}</PageText>{(plan.milestones ?? []).map((milestone) => <View key={milestone.id} style={styles.milestoneRow}><Pressable onPress={() => toggleMilestone(plan.id, milestone.id)} style={styles.milestoneCheck} accessibilityRole="checkbox" accessibilityState={{ checked: milestone.completed }}><PageText style={styles.goalActionText}>{milestone.completed ? '✓ ' : '○ '}{milestone.title}{milestone.dueDate ? ` · due ${milestone.dueDate}` : ''}</PageText></Pressable><NativeActionButton label="Edit" onPress={() => openMilestoneEdit(plan, milestone)} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.milestoneEdit} accessibilityLabel={`Edit milestone ${milestone.title}`}><PageText style={styles.entryEditText}>Edit</PageText></NativeActionButton><NativeActionButton label="Remove" systemImage="trash" onPress={() => removeMilestone(milestone.id)} appearance="plain" tintColor={palette.muted} labelColor={palette.muted} style={styles.milestoneEdit} accessibilityLabel={`Remove milestone ${milestone.title}`}><PageText style={styles.entryEditText}>Remove</PageText></NativeActionButton></View>)}{related.slice(0, 4).map((entry) => <EntryRow key={entry.id} entry={{ ...entry, completed: isDone(entry) }} onToggle={toggleEntry} isLast={false} onEdit={() => openEntryEdit(entry)} />)}<View style={styles.goalActions}><NativeActionButton label="Edit goal" onPress={() => openGoalEdit(plan)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Edit goal</PageText></NativeActionButton><NativeActionButton label="Remove" systemImage="trash" onPress={() => removeGoal(plan.id)} appearance="bordered" tintColor={palette.muted} labelColor={palette.muted} style={styles.goalAction}><PageText style={styles.goalActionText}>Remove</PageText></NativeActionButton><NativeActionButton label="Add milestone" systemImage="plus" onPress={() => openGoalEdit(plan)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Add milestone</PageText></NativeActionButton><NativeActionButton label="Add action" systemImage="plus" onPress={() => openNew('task', plan.id)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Add action</PageText></NativeActionButton>{allowed.map((nextStatus) => <NativeActionButton key={nextStatus} label={nextStatus === 'active' ? status === 'completed' || status === 'abandoned' || status === 'archived' ? 'Reopen' : 'Resume' : nextStatus[0].toUpperCase() + nextStatus.slice(1)} onPress={() => changeGoalStatus(plan.id, nextStatus)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>{nextStatus === 'active' ? status === 'completed' || status === 'abandoned' || status === 'archived' ? 'Reopen' : 'Resume' : nextStatus[0].toUpperCase() + nextStatus.slice(1)}</PageText></NativeActionButton>)}</View></SquircleCard>; }) : <SquircleCard exactSquircle style={styles.emptyPlan}><View style={styles.emptyGlyph}><AppIcon name="goal" style={visualStyle} size={19} color={colors.green} /></View><View style={styles.emptyPlanCopy}><PageText display style={styles.emptyTitle}>{selectedAreaFilter === 'all' ? 'No goals yet' : 'No goals in this area yet.'}</PageText><PageText style={styles.emptySubtitle}>Choose an area that matters and add one clear next step.</PageText></View></SquircleCard>}
-          <View style={styles.goalFooterActions}>
+              <NativeActionButton label="" systemImage="plus" iosHeaderStyle="back" appearance="secondary" tintColor={colors.green} onPress={() => openGoalEdit()} accessibilityLabel="Add a goal" style={styles.iconButton}><AppIcon name="add" style={visualStyle} size={18} color={colors.green} /></NativeActionButton>
+            </SquircleView>
+          </SquircleView>
+            {visibleGoalPlans.length ? visibleGoalPlans.map((plan) => { const related = goalEntriesByPlan.get(plan.id) ?? []; const checked = related.filter((entry) => isDone(entry)).length; const goalStatus = getGoalProgressStatus(plan); const statusLabel = goalStatus ? ({ low: 'Meh', mid: 'Okay', high: 'Fantastic' } as const)[goalStatus] : undefined; const status = plan.status ?? 'active'; const completedGoal = status === 'completed'; const qualitativeProgress = getQualitativeProgress(plan); const area = lifeAreas.find((item) => item.id === plan.lifeAreaId); const allowed: GoalLifecycleStatus[] = status === 'draft' ? ['active', 'abandoned', 'archived'] : status === 'active' ? ['paused', 'completed', 'abandoned', 'archived'] : status === 'paused' ? ['active', 'completed', 'abandoned', 'archived'] : status === 'archived' ? ['active'] : ['active', 'archived']; return <SquircleCard key={plan.id} style={styles.goalCard}><SquircleView style={styles.goalCardHeading}><SquircleView style={styles.goalNudgeIcon}><AppIcon name="goals" style={visualStyle} size={19} color={colors.green} /></SquircleView><SquircleView style={styles.entryCopy}><SquircleView style={completionStyles.goalTitleLine}><PageText display heading={false} style={[styles.goalCardTitle, completionStyles.goalTitleCopy, completedGoal && styles.entryTitleDone]}>{plan.title}</PageText><AnimatedCheckbox checked={completedGoal} color={completedGoal ? colors.green : palette.controlBorder} size={24} reduceMotion={reduceMotion} /></SquircleView><PageText style={styles.emptySubtitle}>{area?.label ?? 'Unassigned area'} · {status[0].toUpperCase() + status.slice(1)} · {plan.priority ?? 'medium'} priority</PageText>{plan.description ? <PageText style={[styles.emptySubtitle, completedGoal && styles.entryTitleDone]}>{plan.description}</PageText> : null}{plan.firstStep ? <PageText style={styles.emptySubtitle}>First step: {plan.firstStep}</PageText> : null}</SquircleView></SquircleView>{plan.why ? <PageText style={styles.goalProgress}>Why this matters: {plan.why}</PageText> : null}{plan.targetType === 'quantitative' && plan.targetValue != null ? <><PageText style={styles.goalProgress}>{`${plan.progressValue ?? 0} / ${plan.targetValue} ${plan.targetUnit || 'unit needed'}${statusLabel ? ` · ${statusLabel}` : ''}`}</PageText>{plan.targetUnit && <SquircleView style={styles.goalActions}><NativeActionButton label="" systemImage="minus" onPress={() => updateGoalProgress(plan.id, -1)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction} accessibilityLabel="Decrease goal progress"><PageText style={styles.goalActionText}>−</PageText></NativeActionButton><NativeActionButton label={`+1 ${plan.targetUnit}`} onPress={() => updateGoalProgress(plan.id, 1)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction} accessibilityLabel="Increase goal progress"><PageText style={styles.goalActionText}>+1 {plan.targetUnit}</PageText></NativeActionButton></SquircleView>}</> : <PageText style={styles.goalProgress}>{qualitativeProgress == null ? 'Qualitative goal · add milestones or a progress estimate' : `Qualitative progress · ${qualitativeProgress}%`}</PageText>}<PageText style={styles.goalProgress}>{plan.startDate ? `Started ${plan.startDate}` : ''}{plan.targetDate ? ` · Target ${plan.targetDate}` : ''}</PageText><PageText style={styles.goalProgress}>{related.length ? `${checked} of ${related.length} linked actions done on ${selectedDate === dateKey() ? 'today' : selectedDateLabel}` : 'No actions linked yet'}</PageText>{(plan.milestones ?? []).map((milestone) => <SquircleView key={milestone.id} style={styles.milestoneRow}><SquirclePressable onPress={() => toggleMilestone(plan.id, milestone.id)} style={styles.milestoneCheck} accessibilityRole="checkbox" accessibilityState={{ checked: milestone.completed }}><SquircleView style={completionStyles.milestoneCheckContent}><AnimatedCheckbox checked={milestone.completed} color={milestone.completed ? colors.green : palette.controlBorder} size={24} reduceMotion={reduceMotion} /><PageText style={[styles.goalActionText, milestone.completed && styles.entryTitleDone]}>{milestone.title}{milestone.dueDate ? ` · due ${milestone.dueDate}` : ''}</PageText></SquircleView></SquirclePressable><NativeActionButton label="Edit" onPress={() => openMilestoneEdit(plan, milestone)} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.milestoneEdit} accessibilityLabel={`Edit milestone ${milestone.title}`}><PageText style={styles.entryEditText}>Edit</PageText></NativeActionButton><NativeActionButton label="Remove" systemImage="trash" onPress={() => removeMilestone(milestone.id)} appearance="plain" tintColor={palette.muted} labelColor={palette.muted} style={styles.milestoneEdit} accessibilityLabel={`Remove milestone ${milestone.title}`}><PageText style={styles.entryEditText}>Remove</PageText></NativeActionButton></SquircleView>)}{related.slice(0, 4).map((entry) => <EntryRow key={entry.id} entry={{ ...entry, completed: isDone(entry) }} onToggle={toggleEntry} isLast={false} onEdit={() => openEntryEdit(entry)} />)}<SquircleView style={styles.goalActions}><NativeActionButton label="Edit goal" onPress={() => openGoalEdit(plan)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Edit goal</PageText></NativeActionButton><NativeActionButton label="Remove" systemImage="trash" onPress={() => removeGoal(plan.id)} appearance="bordered" tintColor={palette.muted} labelColor={palette.muted} style={styles.goalAction}><PageText style={styles.goalActionText}>Remove</PageText></NativeActionButton><NativeActionButton label="Add milestone" systemImage="plus" onPress={() => openGoalEdit(plan)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Add milestone</PageText></NativeActionButton><NativeActionButton label="Add action" systemImage="plus" onPress={() => openNew('task', plan.id)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>Add action</PageText></NativeActionButton>{allowed.map((nextStatus) => <NativeActionButton key={nextStatus} label={nextStatus === 'active' ? status === 'completed' || status === 'abandoned' || status === 'archived' ? 'Reopen' : 'Resume' : nextStatus[0].toUpperCase() + nextStatus.slice(1)} onPress={() => changeGoalStatus(plan.id, nextStatus)} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>{nextStatus === 'active' ? status === 'completed' || status === 'abandoned' || status === 'archived' ? 'Reopen' : 'Resume' : nextStatus[0].toUpperCase() + nextStatus.slice(1)}</PageText></NativeActionButton>)}</SquircleView></SquircleCard>; }) : <SquircleCard style={styles.emptyPlan}><SquircleView style={styles.emptyGlyph}><AppIcon name="goal" style={visualStyle} size={19} color={colors.green} /></SquircleView><SquircleView style={styles.emptyPlanCopy}><PageText display heading={false} style={styles.emptyTitle}>{selectedAreaFilter === 'all' ? 'No goals yet' : 'No goals in this area yet.'}</PageText><PageText style={styles.emptySubtitle}>Choose an area that matters and add one clear next step.</PageText></SquircleView></SquircleCard>}
+          <SquircleView style={styles.goalFooterActions}>
             <NativeActionButton label="Browse templates" systemImage="arrow.right" appearance="bordered" tintColor={colors.green} labelFontSize={13.2} onPress={() => router.push('/templates')} width="full" style={[styles.templateButton, styles.goalFooterButton]}><PageText style={styles.templateButtonText}>Browse templates</PageText><AppIcon name="arrow" style={visualStyle} size={17} /></NativeActionButton>
-          </View>
+          </SquircleView>
 
-        </View>}
+        </SquircleView>}
 
         {activeTab === 'progress' && <ProgressTab
           model={homeScreenModel.progressModel}
@@ -1087,27 +1151,27 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
           onOpenReflection={openProgressReflection}
         />}
 
-        {activeTab === 'profile' && <View style={styles.tabPage}>
-          <PageText style={styles.dateLabel}>YOUR SPACE</PageText><PageText display style={styles.pageHeading}>Make it feel like yours.</PageText><PageText style={[styles.pageIntro, styles.profileHighContrastCopy]}>{account.user ? 'Your planner stays on this device. Choose whether to sync it to your account.' : 'Your planner stays on this device. Sign in if you want to sync it.'}</PageText>
+        {activeTab === 'profile' && <SquircleView style={styles.tabPage}>
+          <PageText style={styles.dateLabel}>YOUR SPACE</PageText><PageText display heading style={styles.pageHeading}>Make it feel like yours.</PageText><PageText style={[styles.pageIntro, styles.profileHighContrastCopy]}>{account.user ? 'Your planner stays on this device. Choose whether to sync it to your account.' : 'Your planner stays on this device. Sign in if you want to sync it.'}</PageText>
           <SquircleCard style={styles.profileAccountCard}>
-            <SquircleCard exactSquircle style={styles.profileIdentityHeader}>
-              <View style={styles.profileAvatarRing}>
+            <SquircleCard style={styles.profileIdentityHeader}>
+              <SquircleView style={styles.profileAvatarRing}>
                 <ProfileAvatar name={profileName} uri={profileAvatarUri} />
-              </View>
-              <PageText display style={styles.profileIdentityName}>{profileName}</PageText>
+              </SquircleView>
+              <PageText display heading={false} style={styles.profileIdentityName}>{profileName}</PageText>
               <PageText style={styles.profileIdentitySubtitle}>
               {account.user ? account.user.email ?? 'Your planner account' : 'Your planner stays on this device.'}
               </PageText>
-              <View style={styles.profileProviderBadge}>
+              <SquircleView style={styles.profileProviderBadge}>
                 <PageText style={styles.profileProviderText}>{profileProviderLabel}</PageText>
-              </View>
+              </SquircleView>
             </SquircleCard>
-            <View style={styles.profileAccountBody}>
+            <SquircleView style={styles.profileAccountBody}>
               {account.user ? <>
                 <PageText style={[styles.profileDetailLabel, styles.profileCenteredText]}>PLANNER SYNC</PageText>
                 {!hasSyncConsent ? <>
                   <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy, styles.profileCenteredText]}>Your planner stays on this device until you give one-time consent to sync goals, life areas, tasks, habits, routines, commitments, reminders, progress history, check-ins, and reflections.</PageText>
-                  <Pressable
+                  <SquirclePressable
                     onPress={enablePlannerSync}
                     style={({ pressed }) => [styles.profilePrimaryAction, pressed && styles.profileButtonPressed]}
                     accessibilityRole="button"
@@ -1115,10 +1179,10 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
                     accessibilityHint="Sync your planner with this account."
                   >
                     <PageText style={styles.profilePrimaryActionText}>Turn on sync</PageText>
-                  </Pressable>
+                  </SquirclePressable>
                 </> : <>
                   <PageText style={[styles.profileSyncStatus, styles.profileCenteredText]}>{account.syncStatus === 'syncing' ? 'Syncing planner…' : account.syncStatus === 'synced' ? 'Your planner is up to date.' : account.syncStatus === 'offline' ? 'Offline. Changes will sync when you reconnect.' : account.syncStatus === 'conflict' ? 'A device and account copy need your choice.' : account.syncStatus === 'error' ? 'Sync could not finish. Your local planner is still available.' : 'Sync is on. Your planner will sync when this device is online.'}</PageText>
-                  <Pressable
+                  <SquirclePressable
                     onPress={() => void account.syncNow(true)}
                     disabled={account.syncStatus === 'syncing'}
                     style={({ pressed }) => [styles.profilePrimaryAction, account.syncStatus === 'syncing' && styles.profileActionDisabled, pressed && account.syncStatus !== 'syncing' && styles.profileButtonPressed]}
@@ -1127,17 +1191,17 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
                     accessibilityState={{ disabled: account.syncStatus === 'syncing', busy: account.syncStatus === 'syncing' }}
                   >
                     <PageText style={styles.profilePrimaryActionText}>{account.syncStatus === 'syncing' ? 'Syncing…' : 'Sync now'}</PageText>
-                  </Pressable>
-                  <Pressable
+                  </SquirclePressable>
+                  <SquirclePressable
                     onPress={disablePlannerSync}
                     style={({ pressed }) => [styles.profileSecondaryAction, pressed && styles.profileButtonPressed]}
                     accessibilityRole="button"
                     accessibilityLabel="Turn off planner sync"
                   >
                     <PageText style={styles.profileSecondaryActionText}>Turn off sync</PageText>
-                  </Pressable>
+                  </SquirclePressable>
                 </>}
-                <Pressable
+                <SquirclePressable
                   onPress={requestSignOutConfirmation}
                   disabled={accountActionInProgress !== null}
                   style={({ pressed }) => [styles.profileSignOutAction, accountActionInProgress !== null && styles.profileActionDisabled, pressed && accountActionInProgress === null && styles.profileButtonPressed]}
@@ -1146,77 +1210,94 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
                   accessibilityState={{ disabled: accountActionInProgress !== null }}
                 >
                   <PageText style={styles.signOutActionText}>Sign out</PageText>
-                </Pressable>
+                </SquirclePressable>
               </> : account.loading ? (
                 <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy, styles.profileCenteredText]}>Checking your account…</PageText>
               ) : <>
                 <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy, styles.profileCenteredText]}>{account.configured ? 'Keep using this guest workspace, or sign in to sync it. Your existing guest data will be kept safe while you choose what to do.' : 'Your guest planner stays on this device. Sign-in options will appear in the next step when account services are available.'}</PageText>
-                <Pressable
+                <SquirclePressable
                   onPress={() => guestWorkspaceSignInTrayRef.current?.open()}
                   style={({ pressed }) => [styles.profilePrimaryAction, pressed && styles.profileButtonPressed]}
                   accessibilityRole="button"
                   accessibilityLabel="Sign in to sync this guest workspace"
                 >
                   <PageText style={styles.profilePrimaryActionText}>Sign in</PageText>
-                </Pressable>
-                <Pressable
+                </SquirclePressable>
+                <SquirclePressable
                   onPress={requestSignOutConfirmation}
                   disabled={accountActionInProgress !== null}
-                  style={({ pressed }) => [styles.profileSignOutAction, accountActionInProgress !== null && styles.profileActionDisabled, pressed && accountActionInProgress === null && styles.profileButtonPressed]}
+                  style={({ pressed }) => [styles.profileDestructiveAction, accountActionInProgress !== null && styles.profileActionDisabled, pressed && accountActionInProgress === null && styles.profileButtonPressed]}
                   accessibilityRole="button"
                   accessibilityLabel="Leave guest workspace"
                   accessibilityState={{ disabled: accountActionInProgress !== null }}
                 >
-                  <PageText style={styles.signOutActionText}>Leave guest workspace</PageText>
-                </Pressable>
+                  <PageText style={styles.profileDestructiveText}>Leave guest workspace</PageText>
+                </SquirclePressable>
               </>}
               {account.syncError ? <Feedback severity="error" message="Could not sync your planner. Your local data is still available." action={{ label: 'Try sync again', onPress: () => { void account.syncNow(); } }} /> : null}
-            </View>
+            </SquircleView>
           </SquircleCard>
           {onboarding?.areas.length ? <SquircleCard style={styles.onboardingCard}>
-            <View style={styles.onboardingCardHeading}><AppIcon name="focus" style={visualStyle} size={19} color={colors.green} /><PageText display style={styles.onboardingCardTitle}>Your starting point</PageText></View>
+            <SquircleView style={styles.onboardingCardHeading}><AppIcon name="focus" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Your starting point</PageText></SquircleView>
             <PageText style={styles.profileDetailLabel}>LIFE AREAS</PageText>
             <PageText style={styles.profileDetail}>{onboarding.areas.map((area) => area.label).join(' · ')}</PageText>
           </SquircleCard> : null}
           {archivedGuestDataAvailable && <SquircleCard style={styles.onboardingCard}>
-            <View style={styles.onboardingCardHeading}><AppIcon name="progress" style={visualStyle} size={19} color={colors.green} /><PageText display style={styles.onboardingCardTitle}>Earlier guest data</PageText></View>
+            <SquircleView style={styles.onboardingCardHeading}><AppIcon name="progress" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Earlier guest data</PageText></SquircleView>
             <PageText style={styles.sectionSubtitle}>A previous guest planner was preserved on this device. You can restore it; the current planner will first be saved as another recoverable copy.</PageText>
             <SquirclePressable onPress={restoreGuestCopy} style={[styles.goalAction, styles.profileCenteredAction, { marginTop: 14 }]} accessibilityRole="button"><PageText style={[styles.goalActionText, styles.profileActionLabel]}>Restore earlier planner</PageText></SquirclePressable>
           </SquircleCard>}
           {syncRecoverySnapshots.map((recovery) => <SquircleCard key={recovery.id} style={styles.onboardingCard}>
-            <View style={styles.onboardingCardHeading}><AppIcon name="progress" style={visualStyle} size={19} color={colors.green} /><PageText display style={styles.onboardingCardTitle}>Planner conflict backup</PageText></View>
+            <SquircleView style={styles.onboardingCardHeading}><AppIcon name="progress" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Planner conflict backup</PageText></SquircleView>
             <PageText style={styles.sectionSubtitle}>Saved {new Date(recovery.createdAt).toLocaleString()}. Both copies are preserved on this device.</PageText>
-            <View style={[styles.goalActions, styles.profileActionGroup, { marginTop: 14 }]}>
+            <SquircleView style={[styles.goalActions, styles.profileActionGroup, { marginTop: 14 }]}>
               <SquirclePressable onPress={() => restoreConflictCopy(recovery, 'localSnapshot')} style={[styles.goalAction, styles.profileCenteredAction]} accessibilityRole="button" accessibilityLabel="Restore the device copy from this conflict backup"><PageText style={[styles.goalActionText, styles.profileActionLabel]}>Restore device copy</PageText></SquirclePressable>
               <SquirclePressable onPress={() => restoreConflictCopy(recovery, 'cloudSnapshot')} style={[styles.goalAction, styles.profileCenteredAction]} accessibilityRole="button" accessibilityLabel="Restore the account copy from this conflict backup"><PageText style={[styles.goalActionText, styles.profileActionLabel]}>Restore account copy</PageText></SquirclePressable>
-            </View>
+            </SquircleView>
           </SquircleCard>)}
           <SquircleCard style={styles.onboardingCard}>
-            <View style={styles.profileReminderHeading}>
-              <View style={[styles.onboardingCardHeading, styles.profileReminderTitle]}><AppIcon name="clock" style={visualStyle} size={19} color={colors.green} /><PageText display style={styles.onboardingCardTitle}>Reminders</PageText></View>
-              <NativeActionButton label={notificationFormOpen ? 'Close reminder form' : 'Add reminder'} systemImage={notificationFormOpen ? 'xmark' : 'plus'} onPress={() => { setNotificationFormOpen((open) => !open); setNotificationStatus(''); }} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={[styles.inlineAction, styles.profileCenteredInlineAction]}><PageText style={styles.inlineActionText}>{notificationFormOpen ? 'Close' : 'Add'}</PageText></NativeActionButton>
-            </View>
+            <SquircleView style={styles.profileReminderHeading}>
+              <SquircleView style={[styles.onboardingCardHeading, styles.profileReminderTitle]}><AppIcon name="clock" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Reminders</PageText></SquircleView>
+              <NativeActionButton label={notificationFormOpen ? 'Close reminder form' : 'Add reminder'} systemImage={notificationFormOpen ? 'xmark' : 'plus'} onPress={() => { setNotificationFormOpen((open) => !open); setNotificationFeedback(null); }} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={[styles.inlineAction, styles.profileCenteredInlineAction]}><PageText style={styles.inlineActionText}>{notificationFormOpen ? 'Close' : 'Add'}</PageText></NativeActionButton>
+            </SquircleView>
             <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy]}>Set one-time or daily reminders in your local time.</PageText>
-            {reminders.length ? reminders.map((reminder) => <View key={reminder.id} style={styles.notificationRow}>
-              <View style={styles.entryCopy}>
+            {reminders.length ? reminders.map((reminder) => <SquircleView key={reminder.id} style={styles.notificationRow}>
+              <SquircleView style={styles.entryCopy}>
                 <PageText style={styles.profileDetail}>{reminder.title}</PageText>
+                {reminder.importance === 'important' ? <PageText style={styles.entryMeta}>Important</PageText> : null}
                 <PageText style={styles.entryMeta}>{reminder.repeat === 'daily' ? `Repeats daily · ${reminder.time}` : `One time · ${new Date(`${reminder.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · ${reminder.time}`}</PageText>
-              </View>
+              </SquircleView>
               <NativeActionButton label={`Remove ${reminder.title}`} onPress={() => removeNotificationReminder(reminder.id)} appearance="plain" tintColor={palette.error} labelColor={palette.error} style={styles.entryEdit}><PageText style={[styles.entryEditText, { color: palette.error }]}>Remove</PageText></NativeActionButton>
-            </View>) : <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy]}>No reminders added yet. Add one when you want a nudge.</PageText>}
+            </SquircleView>) : <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy]}>No reminders added yet. Add one when you want a nudge.</PageText>}
             {notificationFeedback ? <Feedback {...notificationFeedback} action={notificationFeedback.severity === 'error' || notificationFeedback.severity === 'warning' ? { label: 'Try reminders again', onPress: () => void applyNotificationReminders(reminders, true), disabled: savingReminder } : undefined} /> : null}
             <PageText style={styles.profileDetailLabel}>PUSH NOTIFICATIONS</PageText>
             <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy]}>Push delivery requires an EAS project and a server to register devices and send messages.</PageText>
             <NativeActionButton label="Check push setup" systemImage="bell.badge" onPress={() => void checkPushReadiness()} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={[styles.goalAction, styles.profileCenteredAction]}><PageText style={[styles.goalActionText, styles.profileActionLabel]}>Check push setup</PageText></NativeActionButton>
           </SquircleCard>
-          {(['formal', 'expressive'] as const).map((style) => <SquirclePressable exactSquircle key={style} onPress={() => { setVisualStyle(style); toast.success('Appearance updated', { description: style === 'formal' ? 'Refined uses clear text and simple icons.' : 'Expressive uses handwritten text and icons.' }); }} style={[styles.styleCard, visualStyle === style && styles.styleCardSelected]} accessibilityRole="radio" accessibilityState={{ selected: visualStyle === style }}><View style={styles.styleIcon}><AppIcon name={style === 'formal' ? 'progress' : 'sparkle'} style={style} size={22} /></View><View style={styles.entryCopy}><PageText display style={styles.styleName}>{style === 'formal' ? 'Refined' : 'Expressive'}</PageText><PageText style={[styles.emptySubtitle, styles.profileHighContrastCopy]}>{style === 'formal' ? 'Clear text and simple icons' : 'Handwritten text and icons'}</PageText></View><View style={[styles.radio, visualStyle === style && styles.radioSelected]}>{visualStyle === style && <View style={styles.radioDot} />}</View></SquirclePressable>)}
-          <SquircleCard exactSquircle style={styles.profileNote}><AppIcon name="focus" style={visualStyle} size={18} /><PageText style={[styles.emptySubtitle, styles.profileHighContrastCopy, styles.profileCenteredText]}>Your appearance choice is saved on this device.</PageText></SquircleCard>
-          <SquirclePressable onPress={requestDeleteAccountConfirmation} disabled={account.loading || accountActionInProgress !== null} style={[styles.deleteAccountButton, (account.loading || accountActionInProgress !== null) && { opacity: 0.5 }]} accessibilityRole="button" accessibilityState={{ disabled: account.loading || accountActionInProgress !== null }} accessibilityLabel={account.user ? 'Delete my account and data' : 'Erase my planner data'}><PageText style={[styles.deleteAccountTitle, styles.profileCenteredText]}>{account.user ? 'Delete my account and data' : 'Erase my planner data'}</PageText><PageText style={[styles.deleteAccountBody, styles.profileCenteredText]}>{account.user ? 'Permanently delete your account and planner data from the server and this device.' : 'Permanently erase your goals, tasks, habits, routines, and progress from this device.'}</PageText></SquirclePressable>
-        </View>}
+          {(['formal', 'expressive'] as const).map((style) => <SquirclePressable key={style} onPress={() => { setVisualStyle(style); toast.success('Appearance updated', { description: style === 'formal' ? 'Refined uses clear text and simple icons.' : 'Expressive uses handwritten text and icons.' }); }} style={[styles.styleCard, visualStyle === style && styles.styleCardSelected]} accessibilityRole="radio" accessibilityState={{ selected: visualStyle === style }}><SquircleView style={styles.styleIcon}><AppIcon name={style === 'formal' ? 'progress' : 'sparkle'} style={style} size={22} /></SquircleView><SquircleView style={styles.entryCopy}><PageText display heading={false} style={styles.styleName}>{style === 'formal' ? 'Refined' : 'Expressive'}</PageText><PageText style={[styles.emptySubtitle, styles.profileHighContrastCopy]}>{style === 'formal' ? 'Clear text and simple icons' : 'Handwritten text and icons'}</PageText></SquircleView><SquircleView style={[styles.radio, visualStyle === style && styles.radioSelected]}>{visualStyle === style && <SquircleView style={styles.radioDot} />}</SquircleView></SquirclePressable>)}
+          <SquircleCard style={styles.profileNote}><AppIcon name="focus" style={visualStyle} size={18} /><PageText style={[styles.emptySubtitle, styles.profileHighContrastCopy, styles.profileCenteredText]}>Your appearance choice is saved on this device.</PageText></SquircleCard>
+          <NativeActionButton
+            label={account.user ? 'Delete my account and data' : 'Erase my data'}
+            onPress={requestDeleteAccountConfirmation}
+            disabled={account.loading || accountActionInProgress !== null}
+            width="full"
+            appearance="prominent"
+            tintColor={palette.error}
+            labelColor={palette.onInk}
+            style={[styles.deleteAccountButton, (account.loading || accountActionInProgress !== null) && { opacity: 0.5 }]}
+            accessibilityLabel={account.user ? 'Delete my account and data' : 'Erase my data'}
+            accessibilityHint="Opens a confirmation before deleting planner data"
+          >
+            {account.user ? <View style={styles.deleteAccountContent}>
+              <PageText style={[styles.deleteAccountTitle, styles.profileCenteredText]}>Delete my account and data</PageText>
+              <PageText style={[styles.deleteAccountBody, styles.profileCenteredText]}>Permanently delete your account and planner data from the server and this device.</PageText>
+            </View> : undefined}
+          </NativeActionButton>
+        </SquircleView>}
       </Animated.ScrollView>
-      </View>
+      </SquircleView>
       {!showTabBar && <ProgressiveEdgeBlur edge="bottom" surfaceColor={colors.paper} style={styles.bottomEdgeFade} />}
-      {Platform.OS !== 'android' && <Animated.View collapsable={false} pointerEvents="none" style={[styles.topBlur, headerBlurStyle]}>
+      <AnimatedSquircleView collapsable={false} pointerEvents="none" style={[styles.topBlur, headerBlurStyle]}>
         <ProgressiveEdgeBlur
           edge="top"
           surfaceColor={colors.paper}
@@ -1224,53 +1305,53 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
           tint="systemUltraThinMaterial"
           intensity={88}
           startOffset={0}
-          style={StyleSheet.absoluteFill}
+          scrollProgress={scrollY}
+          revealScrollDistance={headerCollapseDistance}
+          gradientOnly={Platform.OS === 'android'}
+          style={[StyleSheet.absoluteFill, { height: '100%' }]}
         />
-      </Animated.View>}
-      {/* Keep the paper wash inside the morphing header as its height changes. */}
-      <Animated.View pointerEvents="none" style={[styles.headerSurface, { height: expandedHeaderHeight }]}>
-        <SkiaCollapsingHeaderSurface width={windowWidth} expandedHeight={expandedHeaderHeight} collapsedHeight={collapsedHeaderHeight} surfaceColor={colors.paper} collapseProgress={headerCollapseProgress} />
-      </Animated.View>
-      <Animated.View pointerEvents="box-none" style={[styles.headerOverlay, { height: expandedHeaderHeight }]}>
-        <View style={styles.header}>
+      </AnimatedSquircleView>
+      <AnimatedSquircleView pointerEvents="box-none" style={[styles.headerOverlay, { height: expandedHeaderHeight }]}>
+        <SquircleView style={styles.header}>
           {activeTab === 'today' ? <>
-            <Animated.View style={[styles.expandedHeaderCopy, expressive && styles.expandedHeaderCopyExpressive, todayExpandedTitleStyle]}><PageText style={styles.dateLabel}>{selectedDateLabel.toUpperCase()}</PageText><PageText display style={[styles.greeting, expressive && styles.greetingExpressive]}>{currentGreeting},</PageText><PageText display style={[styles.greetingSecond, expressive && styles.greetingSecondExpressive]}>let’s find your rhythm.</PageText></Animated.View>
-            <Animated.View style={[styles.compactHeaderTitle, styles.compactHeaderTitleScale, { top: insets.top, height: APP_TAB_COMPACT_HEADER_HEIGHT }, todayCompactTitleStyle]}><PageText display style={styles.screenHeaderTitle}>Today</PageText></Animated.View>
-          </> : <Animated.View key="tab-header-title" style={[styles.expandedHeaderCopy, styles.expandedHeaderCopyFull, styles.compactHeaderTitleScale, tabHeaderTitleStyle]}><PageText display style={styles.screenHeaderTitle}>{activeTabLabel}</PageText></Animated.View>}
-        </View>
-      </Animated.View>
+            <AnimatedSquircleView style={[styles.expandedHeaderCopy, expressive && styles.expandedHeaderCopyExpressive, todayExpandedTitleStyle]}><PageText style={styles.dateLabel}>{selectedDateLabel.toUpperCase()}</PageText><PageText display heading style={[styles.greeting, expressive && styles.greetingExpressive]}>{currentGreeting},</PageText><PageText display heading style={[styles.greetingSecond, expressive && styles.greetingSecondExpressive]}>let’s find your rhythm.</PageText></AnimatedSquircleView>
+            <AnimatedSquircleView style={[styles.compactHeaderTitle, styles.compactHeaderTitleScale, { top: insets.top, height: APP_TAB_COMPACT_HEADER_HEIGHT }, todayCompactTitleStyle]}><PageText display heading style={styles.screenHeaderTitle}>Today</PageText></AnimatedSquircleView>
+          </> : <AnimatedSquircleView key="tab-header-title" style={[styles.expandedHeaderCopy, styles.expandedHeaderCopyFull, styles.compactHeaderTitleScale, tabHeaderTitleStyle]}><PageText display heading style={styles.screenHeaderTitle}>{activeTabLabel}</PageText></AnimatedSquircleView>}
+        </SquircleView>
+      </AnimatedSquircleView>
 
-      {showTabBar && <View pointerEvents="box-none" style={[styles.tabBarFooter, { height: tabBarReservedBottomSpace }]}>
+      {showTabBar && <SquircleView pointerEvents="box-none" style={[styles.tabBarFooter, { height: tabBarReservedBottomSpace }]}>
         <ProgressiveEdgeBlur
           edge="bottom"
           surfaceColor={colors.paper}
           gradientOnly
           style={[styles.mainFooterFade, { height: TAB_BAR_FOOTER_FADE_HEIGHT }]}
         />
-        <View style={[styles.tabBarWrap, { marginBottom: tabBarBottomOffset, zIndex: 20 }]}>
-        <View style={styles.tabBar}>
+        <SquircleView style={[styles.tabBarWrap, { marginBottom: tabBarBottomOffset, zIndex: 20 }]}>
+        <SquircleView style={styles.tabBar} onLayout={(event) => setTabBarWidth(event.nativeEvent.layout.width)}>
+          <AnimatedSquircleView pointerEvents="none" style={[{ position: 'absolute', top: 2, bottom: 2, left: TAB_BAR_PADDING, width: tabSlotWidth, borderRadius: Radius.pill, backgroundColor: palette.lightGreen, opacity: tabSlotWidth > 0 ? 1 : 0 }, tabIndicatorStyle]} />
           {tabs.map((tab) => {
             const selected = activeTab === tab.id;
-            return <Pressable key={tab.id} onPress={() => changeTab(tab.id)} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={tab.label} style={({ pressed }) => [styles.tabButton, selected && styles.tabButtonSelected, pressed && { backgroundColor: palette.pressed }]}>
-              <View style={styles.tabIconWrap}><AppIcon name={tab.id} style={visualStyle} size={TAB_ICON_SIZE} color={selected ? colors.green : palette.muted} /></View><PageText style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{tab.label}</PageText>
-            </Pressable>;
+            return <SquirclePressable nativePill key={tab.id} onPress={() => changeTab(tab.id)} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={tab.label} style={({ pressed }) => [styles.tabButton, pressed && { backgroundColor: palette.pressed }]}>
+              <SquircleView style={styles.tabIconWrap}><AppIcon name={tab.id} style={visualStyle} size={TAB_ICON_SIZE} color={selected ? colors.green : palette.muted} /></SquircleView><PageText numberOfLines={1} style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{tab.label}</PageText>
+            </SquirclePressable>;
           })}
-        </View>
-        </View>
-      </View>}
+        </SquircleView>
+        </SquircleView>
+      </SquircleView>}
 
-      <BottomSheet index={reflectionSheetOpen ? 0 : -1} onClose={() => setReflectionSheetOpen(false)} enablePanDownToClose snapPoints={['60%', '90%']} backgroundStyle={{ backgroundColor: colors.paper }}>
-        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper, overflow: 'hidden' }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <BottomSheetScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-              <View style={styles.reflectionSheetHeading}>
+      <BottomSheet index={reflectionSheetOpen ? 0 : -1} onClose={() => setReflectionSheetOpen(false)} enablePanDownToClose snapPoints={SHEET_SNAP_POINTS} backgroundStyle={{ backgroundColor: colors.paper }}>
+        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}>
+          <SheetKeyboard>
+            <BottomSheetScrollView style={{ flex: 1, marginBottom: Platform.OS === 'ios' ? -insets.bottom : 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+              <SquircleView style={styles.reflectionSheetHeading}>
                 <PageText style={styles.dateLabel}>WEEK OF {new Date(`${selectedWeekStart}T12:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }).toUpperCase()}</PageText>
-                <View style={styles.sheetTitleRow}>
-                  <PageText display style={[styles.sheetTitle, styles.reflectionSheetTitle]}>A moment to reflect</PageText>
+                <SquircleView style={styles.sheetTitleRow}>
+                  <PageText display heading style={[styles.sheetTitle, styles.reflectionSheetTitle]}>A moment to reflect</PageText>
                   <NativeActionButton label="" onPress={() => setReflectionSheetOpen(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close reflection"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton>
-                </View>
+                </SquircleView>
                 <PageText style={styles.sectionSubtitle}>Note what helped, what got in the way, and what to change next.</PageText>
-              </View>
+              </SquircleView>
               <PageText style={styles.reflectionLabel}>WHAT WENT WELL?</PageText>
               <TextInput hideLabel value={activeReflectionDraft.wentWell} onChangeText={(value) => setReflectionDraft((current) => ({ ...activeReflectionDraft, wentWell: value }))} placeholder="A small win, moment, or choice..." multiline style={styles.reflectionInput} accessibilityLabel="What went well this week" maxLength={500} />
               <PageText style={styles.reflectionLabel}>WHAT GOT IN THE WAY?</PageText>
@@ -1288,124 +1369,125 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
               }} style={styles.primaryButton}><PageText style={styles.primaryButtonText}>{savedReflection ? 'Update reflection' : 'Save reflection'}</PageText><AppIcon name="check" style={visualStyle} size={18} color={palette.onAccent} /></NativeActionButton>
               {savedReflection && <PageText style={styles.sectionSubtitle}>Saved on this device · {new Date(savedReflection.updatedAt).toLocaleDateString()}</PageText>}
             </BottomSheetScrollView>
-          </KeyboardAvoidingView>
+          </SheetKeyboard>
         </BottomSheetView>
       </BottomSheet>
 
-      <BottomSheet index={areaManagerOpen ? 0 : -1} onClose={() => setAreaManagerOpen(false)} enablePanDownToClose snapPoints={['60%', '90%']} backgroundStyle={{ backgroundColor: colors.paper }}>
-        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper, overflow: 'hidden' }}>
-          <BottomSheetScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-            <View style={styles.sheetHeading}><View style={styles.sheetHeadingCopy}><PageText display style={styles.sheetTitle}>Life areas</PageText><PageText style={styles.sectionSubtitle}>Choose which areas appear in your overview and goal form.</PageText></View><NativeActionButton label="" onPress={() => setAreaManagerOpen(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close life areas"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton></View>
-            <View>
+      <BottomSheet index={areaManagerOpen ? 0 : -1} onClose={() => setAreaManagerOpen(false)} enablePanDownToClose snapPoints={SHEET_SNAP_POINTS} backgroundStyle={{ backgroundColor: colors.paper }}>
+        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}>
+          <BottomSheetScrollView style={{ flex: 1, marginBottom: Platform.OS === 'ios' ? -insets.bottom : 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+            <SquircleView style={styles.sheetHeading}><SquircleView style={styles.sheetHeadingCopy}><PageText display heading style={styles.sheetTitle}>Life areas</PageText><PageText style={styles.sectionSubtitle}>Choose which areas appear in your overview and goal form.</PageText></SquircleView><NativeActionButton label="" onPress={() => setAreaManagerOpen(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close life areas"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton></SquircleView>
+            <SquircleView>
               <PageText style={styles.sectionSubtitle}>Disabling an area keeps its goals and history.</PageText>
-              {lifeAreas.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((area) => <View key={area.id} style={styles.areaManageRow}><View style={styles.entryCopy}>{area.isCustom ? <TextInput value={area.label} onChangeText={(value) => renameLifeArea(area.id, value)} style={styles.areaRenameInput} accessibilityLabel={`Rename ${area.label}`} maxLength={45} /> : <PageText style={styles.profileDetail}>{area.label}</PageText>}</View>{!area.enabled && plans.some((plan) => plan.lifeAreaId === area.id) && <NativeActionButton label="View goals" onPress={() => { setSelectedAreaFilter(area.id); setAreaManagerOpen(false); }} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>View goals</PageText></NativeActionButton>}<Switch value={area.enabled} onValueChange={(value) => setLifeAreaEnabled(area.id, value)} accessibilityLabel={`${area.enabled ? 'Disable' : 'Enable'} ${area.label}`} /></View>)}
-              <View style={styles.areaAddRow}><TextInput value={newAreaName} onChangeText={setNewAreaName} placeholder="Add a custom life area" placeholderTextColor={palette.muted} style={[styles.measureInput, styles.areaAddInput]} maxLength={45} accessibilityLabel="New life area name" /><NativeActionButton label="Add area" systemImage="plus" appearance="bordered" tintColor={colors.green} onPress={addCustomLifeArea} disabled={!newAreaName.trim()} style={[styles.goalAction, !newAreaName.trim() && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Add area</PageText></NativeActionButton></View>
-            </View>
+              {lifeAreas.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((area) => <SquircleView key={area.id} style={styles.areaManageRow}><SquircleView style={styles.entryCopy}>{area.isCustom ? <TextInput value={area.label} onChangeText={(value) => renameLifeArea(area.id, value)} style={styles.areaRenameInput} accessibilityLabel={`Rename ${area.label}`} maxLength={45} /> : <PageText style={styles.profileDetail}>{area.label}</PageText>}</SquircleView>{!area.enabled && plans.some((plan) => plan.lifeAreaId === area.id) && <NativeActionButton label="View goals" onPress={() => { setSelectedAreaFilter(area.id); setAreaManagerOpen(false); }} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>View goals</PageText></NativeActionButton>}<Switch value={area.enabled} onValueChange={(value) => setLifeAreaEnabled(area.id, value)} accessibilityLabel={`${area.enabled ? 'Disable' : 'Enable'} ${area.label}`} /></SquircleView>)}
+              <SquircleView style={styles.areaAddRow}><TextInput value={newAreaName} onChangeText={setNewAreaName} placeholder="Add a custom life area" placeholderTextColor={palette.muted} style={[styles.measureInput, styles.areaAddInput]} maxLength={45} accessibilityLabel="New life area name" /><NativeActionButton label="Add area" systemImage="plus" appearance="bordered" tintColor={colors.green} onPress={addCustomLifeArea} disabled={!newAreaName.trim()} style={[styles.goalAction, !newAreaName.trim() && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Add area</PageText></NativeActionButton></SquircleView>
+            </SquircleView>
           </BottomSheetScrollView>
         </BottomSheetView>
       </BottomSheet>
 
-      <BottomSheet index={showAdd ? 0 : -1} onClose={() => setShowAdd(false)} enablePanDownToClose snapPoints={['60%', '90%']} backgroundStyle={{ backgroundColor: colors.paper }}>
-        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper, overflow: 'hidden' }}>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
-          >
-          <BottomSheetScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-            <View style={styles.sheetHeading}><View style={styles.sheetHeadingCopy}><PageText display style={styles.sheetTitle}>{editingGoalId ? 'Edit your goal' : editingEntryId ? 'Edit your task' : 'Make a little space'}</PageText><PageText style={styles.sectionSubtitle}>{editingGoalId ? 'Keep the direction meaningful to you.' : 'Add one thing you want to return to.'}</PageText></View><NativeActionButton label="" onPress={() => setShowAdd(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton></View>
+      <BottomSheet index={showAdd ? 0 : -1} onClose={() => setShowAdd(false)} enablePanDownToClose snapPoints={SHEET_SNAP_POINTS} backgroundStyle={{ backgroundColor: colors.paper }}>
+        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}>
+          <SheetKeyboard>
+          <BottomSheetScrollView style={{ flex: 1, marginBottom: Platform.OS === 'ios' ? -insets.bottom : 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+            <SquircleView style={styles.sheetHeading}><SquircleView style={styles.sheetHeadingCopy}><PageText display heading style={styles.sheetTitle}>{editingGoalId ? 'Edit your goal' : editingEntryId ? 'Edit your task' : 'Make a little space'}</PageText><PageText style={styles.sectionSubtitle}>{editingGoalId ? 'Keep the direction meaningful to you.' : 'Add one thing you want to return to.'}</PageText></SquircleView><NativeActionButton label="" onPress={() => setShowAdd(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton></SquircleView>
             {formError ? <Feedback severity="error" message={formError} /> : null}
             <PageText style={styles.emptySubtitle}>{entryType === 'goal' ? 'A goal is an outcome you want to reach.' : entryType === 'habit' ? 'A habit is an action you repeat on chosen days.' : 'A task is an action you plan to finish.'}</PageText>
-            {!editingGoalId && <View style={styles.typeSelector}>{(['task', 'habit', 'goal'] as EntryType[]).map((type) => <SquirclePressable key={type} onPress={() => setEntryType(type)} style={[styles.typePill, entryType === type && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: entryType === type }}><PageText style={[styles.typePillText, entryType === type && styles.typePillTextSelected]}>{type === 'task' ? 'Task' : type === 'habit' ? 'Habit' : 'Goal'}</PageText></SquirclePressable>)}</View>}
-            <View pointerEvents={savingEntry || pendingEntryNotice ? "none" : "auto"} style={{ gap: 12 }}>
+            {!editingGoalId && <SquircleView style={styles.typeSelector}>{(['task', 'habit', 'goal'] as EntryType[]).map((type) => <SquirclePressable key={type} onPress={() => setEntryType(type)} style={[styles.typePill, entryType === type && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: entryType === type }}><PageText style={[styles.typePillText, entryType === type && styles.typePillTextSelected]}>{type === 'task' ? 'Task' : type === 'habit' ? 'Habit' : 'Goal'}</PageText></SquirclePressable>)}</SquircleView>}
+            <SquircleView pointerEvents={savingEntry || pendingEntryNotice ? "none" : "auto"} style={{ gap: 12 }}>
             <TextInput ref={titleInput} label="Name" error={invalidField === 'name' ? formError : undefined} value={draft} editable={canEditOccurrence} onChangeText={setDraft} placeholder={entryType === 'task' ? 'What would you like to do?' : entryType === 'habit' ? 'What would you like to practice?' : 'What would you like to work toward?'} placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} returnKeyType="done" onSubmitEditing={addEntry} accessibilityLabel={entryType === 'task' ? 'Task title' : entryType === 'habit' ? 'Habit name' : 'Goal title'} maxLength={90} />
             {entryType === 'task' && canEditOccurrence && <>
               <TextInput value={taskDescriptionDraft} onChangeText={setTaskDescriptionDraft} placeholder="Description (optional)" placeholderTextColor={palette.muted} multiline maxLength={500} style={[styles.addInput, { minHeight: 72, paddingTop: 14, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Task description" />
-              <PageText style={styles.goalPickerLabel}>PRIORITY</PageText><View style={styles.typeSelector}>{([['low', 'Low'], ['medium', 'Medium'], ['high', 'High']] as const).map(([priority, label]) => <SquirclePressable key={priority} onPress={() => setTaskPriorityDraft(priority)} style={[styles.typePill, taskPriorityDraft === priority && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: taskPriorityDraft === priority }}><PageText style={[styles.typePillText, taskPriorityDraft === priority && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</View>
+              <PageText style={styles.goalPickerLabel}>PRIORITY</PageText><SquircleView style={styles.typeSelector}>{([['low', 'Low'], ['medium', 'Medium'], ['high', 'High']] as const).map(([priority, label]) => <SquirclePressable key={priority} onPress={() => setTaskPriorityDraft(priority)} style={[styles.typePill, taskPriorityDraft === priority && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: taskPriorityDraft === priority }}><PageText style={[styles.typePillText, taskPriorityDraft === priority && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</SquircleView>
               <DateField value={taskDueDateDraft} onChange={setTaskDueDateDraft} placeholder="Due date (optional)" accessibilityLabel="Task due date" optional />
               <TextInput ref={durationInput} error={invalidField === "duration" ? formError : undefined} value={taskDurationDraft} onChangeText={setTaskDurationDraft} placeholder="Minutes" keyboardType="number-pad" placeholderTextColor={palette.muted} style={[styles.measureInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Estimated task minutes" />
               <PageText style={styles.goalPickerLabel}>SUBTASKS · OPTIONAL</PageText>
-              {taskSubtasksDraft.map((subtask) => <View key={subtask.id} style={styles.subtaskEditRow}><TextInput value={subtask.title} onChangeText={(value) => setTaskSubtasksDraft((items) => items.map((item) => item.id === subtask.id ? { ...item, title: value } : item))} placeholder="Subtask" placeholderTextColor={palette.muted} maxLength={120} style={[styles.measureInput, { marginBottom: 0, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Edit subtask" /><NativeActionButton label="Remove" systemImage="trash" onPress={() => setTaskSubtasksDraft((items) => items.filter((item) => item.id !== subtask.id))} appearance="plain" tintColor={colors.muted} labelColor={colors.muted} style={styles.entryEdit} accessibilityLabel={`Remove subtask ${subtask.title}`}><PageText style={styles.entryEditText}>Remove</PageText></NativeActionButton></View>)}
-              <View style={styles.subtaskEditRow}><TextInput value={newSubtaskDraft} onChangeText={setNewSubtaskDraft} placeholder="Add a step" placeholderTextColor={palette.muted} maxLength={120} style={[styles.measureInput, { marginBottom: 0, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="New subtask" /><NativeActionButton label="Add" systemImage="plus" onPress={() => { const value = newSubtaskDraft.trim(); if (!value) return; setTaskSubtasksDraft((items) => [...items, { id: createOccurrenceId('subtask'), title: value, sortOrder: items.length }]); setNewSubtaskDraft(''); }} disabled={!newSubtaskDraft.trim()} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={[styles.goalAction, !newSubtaskDraft.trim() && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Add</PageText></NativeActionButton></View>
+              {taskSubtasksDraft.map((subtask) => <SquircleView key={subtask.id} style={styles.subtaskEditRow}><TextInput value={subtask.title} onChangeText={(value) => setTaskSubtasksDraft((items) => items.map((item) => item.id === subtask.id ? { ...item, title: value } : item))} placeholder="Subtask" placeholderTextColor={palette.muted} maxLength={120} style={[styles.measureInput, { marginBottom: 0, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Edit subtask" /><NativeActionButton label="Remove" systemImage="trash" onPress={() => setTaskSubtasksDraft((items) => items.filter((item) => item.id !== subtask.id))} appearance="plain" tintColor={colors.muted} labelColor={colors.muted} style={styles.entryEdit} accessibilityLabel={`Remove subtask ${subtask.title}`}><PageText style={styles.entryEditText}>Remove</PageText></NativeActionButton></SquircleView>)}
+              <SquircleView style={styles.subtaskEditRow}><TextInput value={newSubtaskDraft} onChangeText={setNewSubtaskDraft} placeholder="Add a step" placeholderTextColor={palette.muted} maxLength={120} style={[styles.measureInput, { marginBottom: 0, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="New subtask" /><NativeActionButton label="Add" systemImage="plus" onPress={() => { const value = newSubtaskDraft.trim(); if (!value) return; setTaskSubtasksDraft((items) => [...items, { id: createOccurrenceId('subtask'), title: value, sortOrder: items.length }]); setNewSubtaskDraft(''); }} disabled={!newSubtaskDraft.trim()} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={[styles.goalAction, !newSubtaskDraft.trim() && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Add</PageText></NativeActionButton></SquircleView>
             </>}
             {(entryType === 'goal' || editingGoalId) && <>
               <TextInput value={goalDescriptionDraft} onChangeText={setGoalDescriptionDraft} placeholder="Description (optional)" placeholderTextColor={palette.muted} multiline style={[styles.addInput, { minHeight: 76, paddingTop: 14, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal description" maxLength={400} />
               <PageText style={styles.goalPickerLabel}>LIFE AREA · REQUIRED</PageText>
               <ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{lifeAreas.filter((area) => area.enabled || area.id === goalAreaDraft).map((area) => <SquirclePressable key={area.id} onPress={() => setGoalAreaDraft(area.id)} style={[styles.typePill, goalAreaDraft === area.id && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalAreaDraft === area.id }}><PageText style={[styles.typePillText, goalAreaDraft === area.id && styles.typePillTextSelected]}>{area.label}{area.enabled ? '' : ' · paused'}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView>
               <TextInput value={goalWhyDraft} onChangeText={setGoalWhyDraft} placeholder="Why does this matter to you? (optional)" placeholderTextColor={palette.muted} multiline style={[styles.addInput, { minHeight: 66, paddingTop: 14, fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Why this goal matters" maxLength={300} />
-              <PageText style={styles.goalPickerLabel}>PRIORITY</PageText><View style={styles.typeSelector}>{([['low', 'Low'], ['medium', 'Medium'], ['high', 'High']] as const).map(([priority, label]) => <SquirclePressable key={priority} onPress={() => setGoalPriorityDraft(priority)} style={[styles.typePill, goalPriorityDraft === priority && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalPriorityDraft === priority }}><PageText style={[styles.typePillText, goalPriorityDraft === priority && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</View>
+              <PageText style={styles.goalPickerLabel}>PRIORITY</PageText><SquircleView style={styles.typeSelector}>{([['low', 'Low'], ['medium', 'Medium'], ['high', 'High']] as const).map(([priority, label]) => <SquirclePressable key={priority} onPress={() => setGoalPriorityDraft(priority)} style={[styles.typePill, goalPriorityDraft === priority && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalPriorityDraft === priority }}><PageText style={[styles.typePillText, goalPriorityDraft === priority && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</SquircleView>
               <DateField value={goalStartDateDraft} onChange={setGoalStartDateDraft} placeholder="Start date" accessibilityLabel="Goal start date" />
               <DateField value={goalTargetDateDraft} onChange={setGoalTargetDateDraft} placeholder="Target date (optional)" accessibilityLabel="Goal target date" optional minimumDate={new Date(`${goalStartDateDraft}T00:00:00`)} />
-              <PageText style={styles.goalPickerLabel}>HOW WILL YOU TRACK IT?</PageText><View style={styles.typeSelector}>{([['qualitative', 'Qualitative'], ['quantitative', 'Quantitative']] as const).map(([type, label]) => <SquirclePressable key={type} onPress={() => { setGoalTargetTypeDraft(type); if (type === 'qualitative') { setTargetDraft(''); setUnitDraft(''); setGoalProgressDraft(''); } }} style={[styles.typePill, goalTargetTypeDraft === type && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalTargetTypeDraft === type }}><PageText style={[styles.typePillText, goalTargetTypeDraft === type && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</View>
-              {goalTargetTypeDraft === 'quantitative' ? <><PageText style={styles.goalPickerLabel}>TARGET AND UNIT · REQUIRED</PageText><View style={styles.measureRow}><TextInput ref={targetInput} label="Target" error={invalidField === 'target' ? formError : undefined} value={targetDraft} onChangeText={setTargetDraft} placeholder="Target" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.measureInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal target amount" /><TextInput ref={unitInput} label="Unit" error={invalidField === 'unit' ? formError : undefined} value={unitDraft} onChangeText={setUnitDraft} placeholder="Unit (km, books)" placeholderTextColor={palette.muted} style={[styles.measureInput, styles.measureUnit, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal target unit" maxLength={24} /></View>{targetDraft.trim() !== '' && !unitDraft.trim() && <PageText style={styles.sectionSubtitle}>This saved goal needs a unit before you can record progress.</PageText>}<TextInput ref={progressInput} label="Progress" error={invalidField === 'progress' ? formError : undefined} value={goalProgressDraft} editable={!!unitDraft.trim()} onChangeText={setGoalProgressDraft} placeholder="Current progress" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }, !unitDraft.trim() && { opacity: 0.55 }]} accessibilityLabel="Goal current progress" /><PageText style={styles.sectionSubtitle}>Progress status is automatic and never completes the goal for you.</PageText></> : <TextInput ref={progressInput} error={invalidField === "progress" ? formError : undefined} value={manualProgressDraft} onChangeText={setManualProgressDraft} placeholder="Progress estimate (0–100, optional)" keyboardType="number-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Qualitative goal progress estimate" />}
-              <PageText style={styles.goalPickerLabel}>STATUS</PageText><View style={styles.typeSelector}>{goalLifecycleOptions.map((status) => <SquirclePressable key={status} onPress={() => setGoalLifecycleDraft(status)} style={[styles.typePill, goalLifecycleDraft === status && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalLifecycleDraft === status }}><PageText style={[styles.typePillText, goalLifecycleDraft === status && styles.typePillTextSelected]}>{status[0].toUpperCase() + status.slice(1)}</PageText></SquirclePressable>)}</View>
+              <PageText style={styles.goalPickerLabel}>HOW WILL YOU TRACK IT?</PageText><SquircleView style={styles.typeSelector}>{([['qualitative', 'Qualitative'], ['quantitative', 'Quantitative']] as const).map(([type, label]) => <SquirclePressable key={type} onPress={() => { setGoalTargetTypeDraft(type); if (type === 'qualitative') { setTargetDraft(''); setUnitDraft(''); setGoalProgressDraft(''); } }} style={[styles.typePill, goalTargetTypeDraft === type && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalTargetTypeDraft === type }}><PageText style={[styles.typePillText, goalTargetTypeDraft === type && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</SquircleView>
+              {goalTargetTypeDraft === 'quantitative' ? <><PageText style={styles.goalPickerLabel}>TARGET AND UNIT · REQUIRED</PageText><SquircleView style={styles.measureRow}><TextInput ref={targetInput} label="Target" error={invalidField === 'target' ? formError : undefined} value={targetDraft} onChangeText={setTargetDraft} placeholder="Target" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.measureInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal target amount" /><TextInput ref={unitInput} label="Unit" error={invalidField === 'unit' ? formError : undefined} value={unitDraft} onChangeText={setUnitDraft} placeholder="Unit (km, books)" placeholderTextColor={palette.muted} style={[styles.measureInput, styles.measureUnit, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal target unit" maxLength={24} /></SquircleView>{targetDraft.trim() !== '' && !unitDraft.trim() && <PageText style={styles.sectionSubtitle}>This saved goal needs a unit before you can record progress.</PageText>}<TextInput ref={progressInput} label="Progress" error={invalidField === 'progress' ? formError : undefined} value={goalProgressDraft} editable={!!unitDraft.trim()} onChangeText={setGoalProgressDraft} placeholder="Current progress" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }, !unitDraft.trim() && { opacity: 0.55 }]} accessibilityLabel="Goal current progress" /><PageText style={styles.sectionSubtitle}>Progress status is automatic and never completes the goal for you.</PageText></> : <TextInput ref={progressInput} error={invalidField === "progress" ? formError : undefined} value={manualProgressDraft} onChangeText={setManualProgressDraft} placeholder="Progress estimate (0–100, optional)" keyboardType="number-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Qualitative goal progress estimate" />}
+              <PageText style={styles.goalPickerLabel}>STATUS</PageText><SquircleView style={styles.typeSelector}>{goalLifecycleOptions.map((status) => <SquirclePressable key={status} onPress={() => setGoalLifecycleDraft(status)} style={[styles.typePill, goalLifecycleDraft === status && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: goalLifecycleDraft === status }}><PageText style={[styles.typePillText, goalLifecycleDraft === status && styles.typePillTextSelected]}>{status[0].toUpperCase() + status.slice(1)}</PageText></SquirclePressable>)}</SquircleView>
               <TextInput value={editingGoalFirstStep} onChangeText={setEditingGoalFirstStep} placeholder="Optional first step" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Goal first step" maxLength={120} />
               <PageText style={styles.goalPickerLabel}>ADD MILESTONE · OPTIONAL</PageText><TextInput hideLabel value={milestoneTitleDraft} onChangeText={setMilestoneTitleDraft} placeholder="Milestone title" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Milestone title" maxLength={90} /><DateField value={milestoneDueDateDraft} onChange={setMilestoneDueDateDraft} placeholder="Due date (optional)" accessibilityLabel="Milestone due date" optional />
             </>}
             {(entryType === 'habit' || entryType === 'task' && editingOccurrence?.sourceType !== 'routine_step') && canEditOccurrence && <><PageText style={styles.goalPickerLabel}>REPEATS</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{([['once', 'One time'], ['daily', 'Daily'], ['weekdays', 'Weekdays'], ['weekends', 'Weekends'], ['selected_days', 'Selected days']] as const).map(([rule, label]) => <SquirclePressable key={rule} onPress={() => { if (entryType === 'task') setTaskRecurrenceDraft(rule); else setHabitRecurrenceDraft(rule); if (rule === 'selected_days' && recurrenceDaysDraft.length === 0) setRecurrenceDaysDraft([selectedWeekdayNumber]); }} style={[styles.typePill, (entryType === 'task' ? taskRecurrenceDraft : habitRecurrenceDraft) === rule && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: (entryType === 'task' ? taskRecurrenceDraft : habitRecurrenceDraft) === rule }}><PageText style={[styles.typePillText, (entryType === 'task' ? taskRecurrenceDraft : habitRecurrenceDraft) === rule && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView>{(entryType === 'task' ? taskRecurrenceDraft : habitRecurrenceDraft) === 'selected_days' && <ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{recurrenceDayNames.map((name, day) => { const selected = recurrenceDaysDraft.includes(day); return <SquirclePressable key={name} onPress={() => setRecurrenceDaysDraft((current) => selected ? current.filter((item) => item !== day) : [...current, day].sort())} style={[styles.typePill, selected && styles.typePillSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><PageText style={[styles.typePillText, selected && styles.typePillTextSelected]}>{name}</PageText></SquirclePressable>; })}</ProgressiveHorizontalScrollView>}</>}
             {entryType === 'habit' && canEditOccurrence && <><PageText style={styles.goalPickerLabel}>TRACKING</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{([['boolean', 'Done / not done'], ['quantity', 'Quantity'], ['duration', 'Duration']] as const).map(([kind, label]) => <SquirclePressable key={kind} onPress={() => { setHabitTrackingDraft(kind); if (kind === 'boolean') { setTargetDraft(''); setUnitDraft(''); setProgressDraft(''); } else if (kind === 'duration' && !unitDraft.trim()) setUnitDraft('minutes'); }} style={[styles.typePill, habitTrackingDraft === kind && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: habitTrackingDraft === kind }}><PageText style={[styles.typePillText, habitTrackingDraft === kind && styles.typePillTextSelected]}>{label}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView></>}
-            {(entryType === 'task' || entryType === 'habit' && habitTrackingDraft !== 'boolean') && canEditOccurrence && <><PageText style={styles.goalPickerLabel}>MEASURABLE TARGET · OPTIONAL</PageText><View style={styles.measureRow}><TextInput ref={targetInput} label="Target" error={invalidField === 'target' ? formError : undefined} value={targetDraft} onChangeText={setTargetDraft} placeholder="Target" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.measureInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} target amount`} /><TextInput ref={unitInput} label="Unit" error={invalidField === 'unit' ? formError : undefined} value={unitDraft} onChangeText={setUnitDraft} placeholder={entryType === 'habit' && habitTrackingDraft === 'duration' ? 'Unit (minutes)' : 'Unit (cups, km)'} placeholderTextColor={palette.muted} style={[styles.measureInput, styles.measureUnit, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} target unit`} maxLength={24} /></View><TextInput ref={progressInput} label="Progress" error={invalidField === 'progress' ? formError : undefined} value={progressDraft} onChangeText={setProgressDraft} placeholder={`Progress for ${selectedDate}`} keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} progress for selected date`} /><PageText style={styles.sectionSubtitle}>Status is automatic: Meh at or below 30%, Okay above 30% and below 70%, Fantastic at 70% or more.</PageText></>}
-            {isEditingMissedOccurrence && <View>
+            {(entryType === 'task' || entryType === 'habit' && habitTrackingDraft !== 'boolean') && canEditOccurrence && <><PageText style={styles.goalPickerLabel}>MEASURABLE TARGET · OPTIONAL</PageText><SquircleView style={styles.measureRow}><TextInput ref={targetInput} label="Target" error={invalidField === 'target' ? formError : undefined} value={targetDraft} onChangeText={setTargetDraft} placeholder="Target" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.measureInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} target amount`} /><TextInput ref={unitInput} label="Unit" error={invalidField === 'unit' ? formError : undefined} value={unitDraft} onChangeText={setUnitDraft} placeholder={entryType === 'habit' && habitTrackingDraft === 'duration' ? 'Unit (minutes)' : 'Unit (cups, km)'} placeholderTextColor={palette.muted} style={[styles.measureInput, styles.measureUnit, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} target unit`} maxLength={24} /></SquircleView><TextInput ref={progressInput} label="Progress" error={invalidField === 'progress' ? formError : undefined} value={progressDraft} onChangeText={setProgressDraft} placeholder={`Progress for ${selectedDate}`} keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel={`${entryType} progress for selected date`} /><PageText style={styles.sectionSubtitle}>Status is automatic: Meh at or below 30%, Okay above 30% and below 70%, Fantastic at 70% or more.</PageText></>}
+            {isEditingMissedOccurrence && <SquircleView>
               <PageText style={styles.goalPickerLabel}>WHAT GOT IN THE WAY?</PageText>
-              <View style={styles.recoveryChoiceWrap}>{missedReasonOptions.map((option) => <SquirclePressable key={option.id} onPress={() => setMissedReasonOption(option.id)} style={[styles.recoveryChoice, missedReasonOption === option.id && styles.recoveryChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: missedReasonOption === option.id }}><PageText style={[styles.recoveryChoiceText, missedReasonOption === option.id && styles.recoveryChoiceTextSelected]}>{option.label}</PageText></SquirclePressable>)}</View>
+              <SquircleView style={styles.recoveryChoiceWrap}>{missedReasonOptions.map((option) => <SquirclePressable key={option.id} onPress={() => setMissedReasonOption(option.id)} style={[styles.recoveryChoice, missedReasonOption === option.id && styles.recoveryChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: missedReasonOption === option.id }}><PageText style={[styles.recoveryChoiceText, missedReasonOption === option.id && styles.recoveryChoiceTextSelected]}>{option.label}</PageText></SquirclePressable>)}</SquircleView>
               {missedReasonOption === 'custom' && <TextInput value={missedReasonDraft} onChangeText={setMissedReasonDraft} placeholder="Add your own reason" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Custom reason this occurrence was missed" maxLength={180} />}
               {repeatedReasonCount > 1 && suggestedRecovery && <SquircleCard style={styles.recoverySuggestion}><PageText style={styles.entryMeta}>You’ve noted this reason before. A small adjustment may make the next step easier.</PageText><NativeActionButton label={suggestedRecovery === 'reschedule' ? 'Try another day' : suggestedRecovery === 'reduce_target' ? 'Make the target smaller' : suggestedRecovery === 'pause' ? 'Pause this habit' : 'Keep the plan for now'} systemImage="arrow.right" onPress={() => { setRecoveryActionDraft(suggestedRecovery); if (suggestedRecovery === 'reduce_target' && recoveryTargetBefore != null) setReducedTargetDraft(String(Number((recoveryTargetBefore * 0.7).toFixed(2)))); }} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={styles.goalAction}><PageText style={styles.goalActionText}>{suggestedRecovery === 'reschedule' ? 'Try another day' : suggestedRecovery === 'reduce_target' ? 'Make the target smaller' : suggestedRecovery === 'pause' ? 'Pause this habit' : 'Keep the plan for now'}</PageText></NativeActionButton></SquircleCard>}
               <PageText style={[styles.goalPickerLabel, { marginTop: 13 }]}>WHAT WOULD HELP NOW?</PageText>
-              <View style={styles.recoveryChoiceWrap}>{recoveryActionOptions.filter((option) => (!['pause', 'replace'].includes(option.id) || editingOccurrence?.type === 'habit' && editingOccurrence.sourceType === 'habit') && (option.id !== 'reduce_target' || recoveryTargetBefore != null)).map((option) => <SquirclePressable key={option.id} onPress={() => { setRecoveryActionDraft(option.id); if (option.id === 'reduce_target' && recoveryTargetBefore != null) setReducedTargetDraft(String(Number((recoveryTargetBefore * 0.7).toFixed(2)))); }} style={[styles.recoveryChoice, recoveryActionDraft === option.id && styles.recoveryChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: recoveryActionDraft === option.id }}><PageText style={[styles.recoveryChoiceText, recoveryActionDraft === option.id && styles.recoveryChoiceTextSelected]}>{option.label}</PageText></SquirclePressable>)}</View>
+              <SquircleView style={styles.recoveryChoiceWrap}>{recoveryActionOptions.filter((option) => (!['pause', 'replace'].includes(option.id) || editingOccurrence?.type === 'habit' && editingOccurrence.sourceType === 'habit') && (option.id !== 'reduce_target' || recoveryTargetBefore != null)).map((option) => <SquirclePressable key={option.id} onPress={() => { setRecoveryActionDraft(option.id); if (option.id === 'reduce_target' && recoveryTargetBefore != null) setReducedTargetDraft(String(Number((recoveryTargetBefore * 0.7).toFixed(2)))); }} style={[styles.recoveryChoice, recoveryActionDraft === option.id && styles.recoveryChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: recoveryActionDraft === option.id }}><PageText style={[styles.recoveryChoiceText, recoveryActionDraft === option.id && styles.recoveryChoiceTextSelected]}>{option.label}</PageText></SquirclePressable>)}</SquircleView>
               {recoveryActionDraft === 'reduce_target' && <TextInput value={reducedTargetDraft} onChangeText={setReducedTargetDraft} placeholder="New smaller target" keyboardType="decimal-pad" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Reduced target amount" />}
               {recoveryActionDraft === 'replace' && <TextInput value={replacementHabitDraft} onChangeText={setReplacementHabitDraft} placeholder="What would you like to practice instead?" placeholderTextColor={palette.muted} style={[styles.addInput, { fontFamily: expressive ? 'DeliciousHandrawn-Regular' : 'Satoshi' }]} accessibilityLabel="Replacement habit name" maxLength={90} />}
               {recoveryActionDraft === 'reschedule' && <><DateField value={rescheduleDateDraft} onChange={setRescheduleDateDraft} placeholder="New date" accessibilityLabel="Reschedule occurrence to date" minimumDate={rescheduleMinimumDate} /><NativeActionButton label="Reschedule this action" systemImage="calendar" onPress={rescheduleEntry} disabled={!canRescheduleOccurrence} appearance="bordered" tintColor={colors.green} labelColor={colors.green} style={[styles.goalAction, !canRescheduleOccurrence && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Reschedule this action</PageText></NativeActionButton></>}
             {recoveryActionDraft && recoveryActionDraft !== 'reschedule' && <NativeActionButton label="Save reflection and recovery choice" systemImage="checkmark" onPress={applyRecoveryAction} disabled={!canApplyRecovery} style={[styles.primaryButton, !canApplyRecovery && styles.primaryButtonDisabled]}><PageText style={styles.primaryButtonText}>Save reflection and recovery choice</PageText><AppIcon name="check" style={visualStyle} size={18} color={palette.onAccent} /></NativeActionButton>}
-            </View>}
+            </SquircleView>}
             {editingOccurrence && occurrenceStatus(editingOccurrence) === 'planned' && <><PageText style={styles.goalPickerLabel}>RESCHEDULE · OPTIONAL</PageText><DateField value={rescheduleDateDraft} onChange={setRescheduleDateDraft} placeholder="New date" accessibilityLabel="Reschedule occurrence to date" minimumDate={rescheduleMinimumDate} /><NativeActionButton label="Move to new date" systemImage="calendar.badge.clock" appearance="bordered" tintColor={colors.green} onPress={rescheduleEntry} disabled={!canRescheduleOccurrence} style={[styles.goalAction, !canRescheduleOccurrence && styles.primaryButtonDisabled]}><PageText style={styles.goalActionText}>Move to new date</PageText></NativeActionButton></>}
-            {(entryType === 'task' || entryType === 'habit') && plans.length > 0 && <View><PageText style={styles.goalPickerLabel}>LINK TO A GOAL · OPTIONAL</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{plans.map((goal) => <SquirclePressable key={goal.id} onPress={() => { const next = goalLink === goal.id ? undefined : goal.id; setGoalLink(next); setMilestoneLink(undefined); }} style={[styles.typePill, goalLink === goal.id && styles.typePillSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: goalLink === goal.id }}><PageText style={[styles.typePillText, goalLink === goal.id && styles.typePillTextSelected]}>{goal.title}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView></View>}
-            {selectedGoalMilestones.length > 0 && (entryType === 'task' || entryType === 'habit') && <View><PageText style={styles.goalPickerLabel}>LINK TO MILESTONE · OPTIONAL</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{selectedGoalMilestones.map((milestone) => <SquirclePressable key={milestone.id} onPress={() => setMilestoneLink(milestoneLink === milestone.id ? undefined : milestone.id)} style={[styles.typePill, milestoneLink === milestone.id && styles.typePillSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: milestoneLink === milestone.id }}><PageText style={[styles.typePillText, milestoneLink === milestone.id && styles.typePillTextSelected]}>{milestone.title}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView></View>}
+            {(entryType === 'task' || entryType === 'habit') && plans.length > 0 && <SquircleView><PageText style={styles.goalPickerLabel}>LINK TO A GOAL · OPTIONAL</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{plans.map((goal) => <SquirclePressable key={goal.id} onPress={() => { const next = goalLink === goal.id ? undefined : goal.id; setGoalLink(next); setMilestoneLink(undefined); }} style={[styles.typePill, goalLink === goal.id && styles.typePillSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: goalLink === goal.id }}><PageText style={[styles.typePillText, goalLink === goal.id && styles.typePillTextSelected]}>{goal.title}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView></SquircleView>}
+            {selectedGoalMilestones.length > 0 && (entryType === 'task' || entryType === 'habit') && <SquircleView><PageText style={styles.goalPickerLabel}>LINK TO MILESTONE · OPTIONAL</PageText><ProgressiveHorizontalScrollView showEdgeFade={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalPicker}>{selectedGoalMilestones.map((milestone) => <SquirclePressable key={milestone.id} onPress={() => setMilestoneLink(milestoneLink === milestone.id ? undefined : milestone.id)} style={[styles.typePill, milestoneLink === milestone.id && styles.typePillSelected]} accessibilityRole="checkbox" accessibilityState={{ checked: milestoneLink === milestone.id }}><PageText style={[styles.typePillText, milestoneLink === milestone.id && styles.typePillTextSelected]}>{milestone.title}</PageText></SquirclePressable>)}</ProgressiveHorizontalScrollView></SquircleView>}
             {storageStatus !== 'ready' && <PageText style={styles.saveError}>Couldn’t confirm that your changes were saved. Use “Save again” above before closing.</PageText>}
-            </View>
+            </SquircleView>
             {(!isEditingMissedOccurrence || recoveryActionDraft === undefined) && <NativeActionButton label={editingGoalId ? 'Save goal' : isEditingMissedOccurrence ? 'Save reflection' : editingEntryId ? 'Save task' : `Add ${entryType}`} systemImage="arrow.right" onPress={() => void addEntry()} disabled={savingEntry} style={[styles.primaryButton, savingEntry && styles.primaryButtonDisabled]}><PageText style={styles.primaryButtonText}>{editingGoalId ? 'Save goal' : isEditingMissedOccurrence ? 'Save reflection' : editingEntryId ? 'Save task' : `Add ${entryType}`}</PageText><AppIcon name="arrow" style={visualStyle} size={18} color={palette.onAccent} /></NativeActionButton>}
           </BottomSheetScrollView>
-          </KeyboardAvoidingView>
+          </SheetKeyboard>
         </BottomSheetView>
       </BottomSheet>
 
-      <BottomSheet index={commitmentFormOpen ? 0 : -1} onClose={() => { setCommitmentFormOpen(false); setCommitmentDetailsOpen(false); }} enablePanDownToClose snapPoints={['60%', '90%']} backgroundStyle={{ backgroundColor: colors.paper }}>
-        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper, overflow: 'hidden' }}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}><BottomSheetScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-            <View style={styles.sheetHeading}>
-              <View style={styles.sheetHeadingCopy}><PageText display style={styles.sheetTitle}>Add a commitment</PageText><PageText style={styles.sectionSubtitle}>Choose what you’re committing to and when.</PageText></View>
+      <BottomSheet index={commitmentFormOpen ? 0 : -1} onClose={() => { setCommitmentFormOpen(false); setCommitmentDetailsOpen(false); }} enablePanDownToClose snapPoints={[560]} backgroundStyle={{ backgroundColor: colors.paper }}>
+        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}>
+          <SheetKeyboard><BottomSheetScrollView style={{ flex: 1, marginBottom: Platform.OS === 'ios' ? -insets.bottom : 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+            <SquircleView style={styles.sheetHeading}>
+              <SquircleView style={styles.sheetHeadingCopy}><PageText display heading style={styles.sheetTitle}>Add a commitment</PageText><PageText style={styles.sectionSubtitle}>Choose what you’re committing to and when.</PageText></SquircleView>
               <NativeActionButton label="Close commitment form" onPress={() => { setCommitmentFormOpen(false); setCommitmentDetailsOpen(false); }} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton>
-            </View>
+            </SquircleView>
             <TextInput value={commitmentTitle} onChangeText={setCommitmentTitle} placeholder="What will you do?" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Commitment title" maxLength={100} />
             <TextInput value={commitmentTarget} onChangeText={setCommitmentTarget} placeholder="Target" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Commitment target" maxLength={140} />
             <DateField value={commitmentDeadline} onChange={setCommitmentDeadline} placeholder="Deadline" accessibilityLabel="Commitment deadline" />
             <NativeActionButton label={commitmentDetailsOpen ? 'Hide optional details' : 'Add optional details'} onPress={() => setCommitmentDetailsOpen((open) => !open)} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={styles.inlineAction}><PageText style={styles.inlineActionText}>{commitmentDetailsOpen ? 'Hide optional details' : 'Add optional details'}</PageText></NativeActionButton>
-            {commitmentDetailsOpen && <View style={styles.commitmentDetails}>
+            {commitmentDetailsOpen && <SquircleView style={styles.commitmentDetails}>
               <TextInput value={commitmentRequiredActions} onChangeText={setCommitmentRequiredActions} placeholder="Linked actions to track (optional)" placeholderTextColor={palette.muted} keyboardType="number-pad" style={styles.addInput} accessibilityLabel="Required linked actions" maxLength={4} />
               <TextInput value={commitmentTimeframe} onChangeText={setCommitmentTimeframe} placeholder="Timeframe (optional)" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Commitment timeframe" maxLength={80} />
               <TextInput value={commitmentWhy} onChangeText={setCommitmentWhy} placeholder="Why it matters (optional)" placeholderTextColor={palette.muted} multiline style={styles.reflectionInput} accessibilityLabel="Why this commitment matters" maxLength={500} />
               <TextInput value={commitmentReward} onChangeText={setCommitmentReward} placeholder="Reward (optional)" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Commitment reward" maxLength={120} />
               <TextInput value={commitmentConsequence} onChangeText={setCommitmentConsequence} placeholder="Accountability rule (optional)" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Commitment accountability rule" maxLength={160} />
-              {[...taskDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'task' as const })), ...habitDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'habit' as const }))].length > 0 && <><PageText style={styles.reflectionLabel}>LINK A TASK OR HABIT · OPTIONAL</PageText><View style={styles.goalActions}>{[...taskDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'task' as const })), ...habitDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'habit' as const }))].map((source) => <SquirclePressable key={source.type + source.id} onPress={() => setCommitmentSource(commitmentSource?.id === source.id ? undefined : { id: source.id, type: source.type })} style={[styles.goalAction, commitmentSource?.id === source.id && { backgroundColor: colors.lightGreen }]} accessibilityRole="button" accessibilityState={{ selected: commitmentSource?.id === source.id }}><PageText style={styles.goalActionText}>{source.type}: {source.title}</PageText></SquirclePressable>)}</View></>}
-              {plans.length > 0 && <><PageText style={styles.reflectionLabel}>LINK A GOAL · OPTIONAL</PageText><View style={styles.goalActions}>{plans.map((goal) => <SquirclePressable key={goal.id} onPress={() => setCommitmentGoalId(commitmentGoalId === goal.id ? undefined : goal.id)} style={[styles.goalAction, commitmentGoalId === goal.id && { backgroundColor: colors.lightGreen }]} accessibilityRole="button" accessibilityState={{ selected: commitmentGoalId === goal.id }}><PageText style={styles.goalActionText}>{goal.title}</PageText></SquirclePressable>)}</View></>}
-            </View>}
+              {[...taskDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'task' as const })), ...habitDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'habit' as const }))].length > 0 && <><PageText style={styles.reflectionLabel}>LINK A TASK OR HABIT · OPTIONAL</PageText><SquircleView style={styles.goalActions}>{[...taskDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'task' as const })), ...habitDefinitions.map((definition) => ({ id: definition.id, title: definition.title, type: 'habit' as const }))].map((source) => <SquirclePressable key={source.type + source.id} onPress={() => setCommitmentSource(commitmentSource?.id === source.id ? undefined : { id: source.id, type: source.type })} style={[styles.goalAction, commitmentSource?.id === source.id && { backgroundColor: colors.lightGreen }]} accessibilityRole="button" accessibilityState={{ selected: commitmentSource?.id === source.id }}><PageText style={styles.goalActionText}>{source.type}: {source.title}</PageText></SquirclePressable>)}</SquircleView></>}
+              {plans.length > 0 && <><PageText style={styles.reflectionLabel}>LINK A GOAL · OPTIONAL</PageText><SquircleView style={styles.goalActions}>{plans.map((goal) => <SquirclePressable key={goal.id} onPress={() => setCommitmentGoalId(commitmentGoalId === goal.id ? undefined : goal.id)} style={[styles.goalAction, commitmentGoalId === goal.id && { backgroundColor: colors.lightGreen }]} accessibilityRole="button" accessibilityState={{ selected: commitmentGoalId === goal.id }}><PageText style={styles.goalActionText}>{goal.title}</PageText></SquirclePressable>)}</SquircleView></>}
+            </SquircleView>}
             {commitmentError ? <Feedback severity="error" message={commitmentError} /> : null}
             <NativeActionButton label="Save commitment" systemImage="checkmark" onPress={() => void createCommitment()} disabled={savingCommitment} style={styles.primaryButton}><PageText style={styles.primaryButtonText}>Save commitment</PageText><AppIcon name="check" style={visualStyle} size={18} color={palette.onAccent} /></NativeActionButton>
-          </BottomSheetScrollView></KeyboardAvoidingView>
+          </BottomSheetScrollView></SheetKeyboard>
         </BottomSheetView>
       </BottomSheet>
 
-      <BottomSheet index={notificationFormOpen ? 0 : -1} onClose={() => setNotificationFormOpen(false)} enablePanDownToClose snapPoints={['70%', '90%']} backgroundStyle={{ backgroundColor: colors.paper }}>
-        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}><BottomSheetScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-          <View style={styles.sheetHeading}>
-            <View style={styles.sheetHeadingCopy}><PageText display style={styles.sheetTitle}>Add a reminder</PageText><PageText style={styles.sectionSubtitle}>Choose what to remember and when.</PageText></View>
+      <BottomSheet index={notificationFormOpen ? 0 : -1} onClose={() => setNotificationFormOpen(false)} enablePanDownToClose snapPoints={TALL_SHEET_SNAP_POINTS} backgroundStyle={{ backgroundColor: colors.paper }}>
+        <BottomSheetView style={{ flex: 1, backgroundColor: colors.paper }}><SheetKeyboard><BottomSheetScrollView style={{ flex: 1, marginBottom: Platform.OS === 'ios' ? -insets.bottom : 0 }} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.addSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+          <SquircleView style={styles.sheetHeading}>
+            <SquircleView style={styles.sheetHeadingCopy}><PageText display heading style={styles.sheetTitle}>Add a reminder</PageText><PageText style={styles.sectionSubtitle}>Choose what to remember and when.</PageText></SquircleView>
             <NativeActionButton label="" onPress={() => setNotificationFormOpen(false)} appearance="plain" tintColor={colors.ink} labelColor={colors.ink} style={styles.closeButton} accessibilityLabel="Close"><PageText style={styles.closeGlyph}>×</PageText></NativeActionButton>
-          </View>
+          </SquircleView>
           <PageText style={styles.profileDetailLabel}>REMINDER NAME</PageText>
           <TextInput hideLabel ref={reminderNameInput} editable={!savingReminder} value={notificationTitle} onChangeText={setNotificationTitle} placeholder="For example, Take a short walk" placeholderTextColor={palette.muted} style={styles.addInput} accessibilityLabel="Reminder name" maxLength={80} returnKeyType="done" />
           <PageText style={styles.profileDetailLabel}>WHEN</PageText>
-          <View style={styles.typeSelector} accessibilityRole="radiogroup" accessibilityLabel="Reminder frequency">
+          <SquircleView style={styles.typeSelector} accessibilityRole="radiogroup" accessibilityLabel="Reminder frequency">
             {([{ id: 'once', label: 'One time' }, { id: 'daily', label: 'Repeat daily' }] as const).map((option) => <SquirclePressable key={option.id} onPress={() => setNotificationRepeat(option.id)} style={[styles.typePill, notificationRepeat === option.id && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: notificationRepeat === option.id }}><PageText style={[styles.typePillText, notificationRepeat === option.id && styles.typePillTextSelected]}>{option.label}</PageText></SquirclePressable>)}
-          </View>
+          </SquircleView>
+          <PageText style={styles.profileDetailLabel}>IMPORTANCE</PageText>
+          <SquircleView style={styles.typeSelector} accessibilityRole="radiogroup" accessibilityLabel="Reminder importance">
+            {([{ id: 'normal', label: 'Normal' }, { id: 'important', label: 'Important' }] as const).map((option) => <SquirclePressable key={option.id} onPress={() => setNotificationImportance(option.id)} style={[styles.typePill, notificationImportance === option.id && styles.typePillSelected]} accessibilityRole="radio" accessibilityState={{ selected: notificationImportance === option.id }}><PageText style={[styles.typePillText, notificationImportance === option.id && styles.typePillTextSelected]}>{option.label}</PageText></SquirclePressable>)}
+          </SquircleView>
+          <PageText style={styles.reminderFootnote}>Important reminders stay ongoing on Android until handled. On iPhone, they may use Time Sensitive delivery if allowed in Settings. iPhone does not support pinning alerts to the top.</PageText>
           {notificationRepeat === 'once' && <>
             <PageText style={styles.profileDetailLabel}>DATE</PageText>
             <DateField value={notificationDate} onChange={setNotificationDate} placeholder="Choose a date" accessibilityLabel="One-time reminder date" minimumDate={new Date(`${dateKey()}T00:00:00`)} />
@@ -1414,7 +1496,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
           <TextInput hideLabel ref={reminderTimeInput} editable={!savingReminder} value={notificationTime} onChangeText={setNotificationTime} placeholder="HH:MM" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={styles.addInput} accessibilityLabel="Reminder time" />
           {notificationFeedback ? <Feedback {...notificationFeedback} action={notificationFeedback.severity === 'error' || notificationFeedback.severity === 'warning' ? { label: 'Try reminders again', onPress: () => void applyNotificationReminders(reminders, true), disabled: savingReminder } : undefined} /> : null}
           <NativeActionButton label="Save reminder" systemImage="checkmark" onPress={() => void saveNotificationReminder()} disabled={savingReminder} style={styles.primaryButton}><PageText style={styles.primaryButtonText}>Save reminder</PageText><AppIcon name="check" style={visualStyle} size={18} color={palette.onAccent} /></NativeActionButton>
-        </BottomSheetScrollView></KeyboardAvoidingView></BottomSheetView>
+        </BottomSheetScrollView></SheetKeyboard></BottomSheetView>
       </BottomSheet>
 
       {openedCheckInDate && <DailyCheckInSheet date={openedCheckInDate} onClose={() => setOpenedCheckInDate(null)} />}
@@ -1426,9 +1508,9 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
         presentationStyle="overFullScreen"
         onRequestClose={() => { if (accountActionInProgress === null) { setAccountActionDialog(null); setAccountActionError(null); } }}
       >
-        <View style={styles.accountAlertBackdrop}>
+        <SquircleView style={styles.accountAlertBackdrop}>
           <SquircleCard style={styles.accountAlertCard} accessibilityViewIsModal>
-            <PageText display style={styles.accountActionTitle}>{accountActionDialog === 'disableSync' ? 'Turn off planner sync?' : accountActionDialog === 'deleteGuest' ? 'Erase your planner data?' : 'Delete your account?'}</PageText>
+            <PageText display heading style={styles.accountActionTitle}>{accountActionDialog === 'disableSync' ? 'Turn off planner sync?' : accountActionDialog === 'deleteGuest' ? 'Erase your planner data?' : 'Delete your account?'}</PageText>
             <PageText style={styles.accountActionDescription}>{accountActionDialog === 'disableSync'
               ? 'This device will stop syncing changes. The copy already saved to your account will remain there.'
               : accountActionDialog === 'deleteGuest'
@@ -1446,7 +1528,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
               {accountActionInProgress === 'delete' ? <ActivityIndicator color={palette.onInk} size="small" /> : null}
               <PageText style={styles.accountAlertConfirmText}>{accountActionDialog === 'disableSync' ? 'Turn off sync' : accountActionInProgress === 'delete' ? 'Deleting…' : accountActionDialog === 'deleteGuest' ? 'Erase my data' : 'Delete account and data'}</PageText>
             </SquirclePressable>
-            <Pressable
+            <SquirclePressable
               onPress={() => { setAccountActionDialog(null); setAccountActionError(null); }}
               disabled={accountActionInProgress !== null}
               style={[styles.accountActionCancel, accountActionInProgress !== null && styles.accountActionDisabled]}
@@ -1454,9 +1536,9 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
               accessibilityState={{ disabled: accountActionInProgress !== null }}
             >
               <PageText style={styles.accountActionCancelText}>Cancel</PageText>
-            </Pressable>
+            </SquirclePressable>
           </SquircleCard>
-        </View>
+        </SquircleView>
       </Modal>}
 
       {Platform.OS !== 'ios' && <BottomSheet
@@ -1467,7 +1549,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
         backgroundStyle={{ backgroundColor: colors.paper }}
       >
         {accountActionDialog === 'signOut' && <BottomSheetView style={[styles.accountActionSheet, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}> 
-          <PageText display style={styles.accountActionTitle}>{account.user ? 'Sign out?' : 'Leave guest workspace?'}</PageText>
+          <PageText display heading style={styles.accountActionTitle}>{account.user ? 'Sign out?' : 'Leave guest workspace?'}</PageText>
           <PageText style={styles.accountActionDescription}>{account.user ? 'Your account will be disconnected from this device. Your planner data will stay on this device.' : 'Your guest planner will stay on this device.'}</PageText>
           {accountActionError ? <SquircleCard style={styles.accountActionErrorContainer}><PageText style={styles.accountActionError}>{accountActionError}</PageText></SquircleCard> : null}
           <SquirclePressable
@@ -1480,7 +1562,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
             {accountActionInProgress === 'signOut' ? <ActivityIndicator color={palette.onInk} size="small" /> : null}
             <PageText style={styles.accountActionConfirmText}>{accountActionInProgress === 'signOut' ? (account.user ? 'Signing out…' : 'Leaving…') : account.user ? 'Sign out' : 'Leave guest workspace'}</PageText>
           </SquirclePressable>
-          <Pressable
+          <SquirclePressable
             onPress={() => { setAccountActionDialog(null); setAccountActionError(null); }}
             disabled={accountActionInProgress !== null}
             style={[styles.accountActionCancel, accountActionInProgress !== null && styles.accountActionDisabled]}
@@ -1488,10 +1570,10 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
             accessibilityState={{ disabled: accountActionInProgress !== null }}
           >
             <PageText style={styles.accountActionCancelText}>Cancel</PageText>
-          </Pressable>
+          </SquirclePressable>
         </BottomSheetView>}
         {(accountActionDialog === 'deleteGuest' || accountActionDialog === 'deleteAccount') && <BottomSheetView style={[styles.accountActionSheet, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}>
-          <PageText display style={styles.accountActionTitle}>{accountActionDialog === 'deleteGuest' ? 'Erase your planner data?' : 'Delete your account?'}</PageText>
+          <PageText display heading style={styles.accountActionTitle}>{accountActionDialog === 'deleteGuest' ? 'Erase your planner data?' : 'Delete your account?'}</PageText>
           <PageText style={styles.accountActionDescription}>{accountActionDialog === 'deleteGuest'
             ? 'This erases your goals, tasks, habits, routines, and progress from this device. You’ll return to sign-in. You can’t undo this.'
             : 'This deletes your account and planner data from the server and this device. You’ll return to sign-in. You can’t undo this.'}</PageText>
@@ -1507,7 +1589,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
             {accountActionInProgress === 'delete' ? <ActivityIndicator color={palette.onInk} size="small" /> : null}
             <PageText style={styles.accountActionConfirmText}>{accountActionInProgress === 'delete' ? 'Deleting…' : accountActionDialog === 'deleteGuest' ? 'Erase my data' : 'Delete account and data'}</PageText>
           </SquirclePressable>
-          <Pressable
+          <SquirclePressable
             onPress={() => { setAccountActionDialog(null); setAccountActionError(null); }}
             disabled={accountActionInProgress !== null}
             style={[styles.accountActionCancel, accountActionInProgress !== null && styles.accountActionDisabled]}
@@ -1515,11 +1597,11 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
             accessibilityState={{ disabled: accountActionInProgress !== null }}
           >
             <PageText style={styles.accountActionCancelText}>Cancel</PageText>
-          </Pressable>
+          </SquirclePressable>
         </BottomSheetView>}
       </BottomSheet>}
       <GuestWorkspaceSignInTray ref={guestWorkspaceSignInTrayRef} />
-    </View>
+    </SquircleView>
     </VisualStyleContext.Provider>
   );
 }

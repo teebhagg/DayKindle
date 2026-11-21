@@ -1,10 +1,9 @@
-import { memo, useEffect } from 'react';
-import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Path, Rect, type PathProps } from 'react-native-svg';
+import { memo, useEffect, useMemo } from 'react';
+import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
 const TICK_PATH = 'M8 16l5.5 5.5L24 10';
-const TICK_LENGTH = 24;
 
 type AnimatedCheckboxProps = {
   checked: boolean;
@@ -15,20 +14,41 @@ type AnimatedCheckboxProps = {
 
 function AnimatedCheckbox({ checked, color, size = 28, reduceMotion = false }: AnimatedCheckboxProps) {
   const progress = useSharedValue(checked ? 1 : 0);
-  const strokeProps = useAnimatedProps<Pick<PathProps, 'strokeDashoffset' | 'opacity'>>(() => ({
-    strokeDashoffset: TICK_LENGTH * (1 - progress.value),
-    opacity: progress.value <= 0.01 ? 0 : 1,
-  }));
+  const tickPath = useMemo(() => Skia.Path.MakeFromSVGString(TICK_PATH), []);
 
   useEffect(() => {
-    progress.value = withTiming(checked ? 1 : 0, { duration: reduceMotion ? 0 : checked ? 290 : 230 });
+    progress.value = withTiming(checked ? 1 : 0, { duration: reduceMotion ? 0 : checked ? 210 : 160 });
   }, [checked, progress, reduceMotion]);
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 32 32" accessibilityElementsHidden>
-      <Rect x={4.5} y={4.5} width={23} height={23} rx={7} fill="none" stroke={color} strokeWidth={1.7} />
-      <AnimatedPath d={TICK_PATH} fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={TICK_LENGTH} animatedProps={strokeProps} />
-    </Svg>
+    <View
+      pointerEvents="none"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      style={{ width: size, height: size }}
+    >
+      <Canvas style={StyleSheet.absoluteFill}>
+        <RoundedRect
+          rect={Skia.RRectXY(Skia.XYWHRect(4.5, 4.5, 23, 23), 7, 7)}
+          color={color}
+          style="stroke"
+          strokeWidth={1.7}
+        />
+        {tickPath ? (
+          <Path
+            path={tickPath}
+            color={color}
+            style="stroke"
+            strokeWidth={2.6}
+            strokeCap="round"
+            strokeJoin="round"
+            start={0}
+            end={progress}
+          />
+        ) : null}
+      </Canvas>
+    </View>
   );
 }
 
