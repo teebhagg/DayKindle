@@ -381,7 +381,8 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
       await clearLocalStorage({ preserveRecovery: true });
       writesBlocked.current = false;
       lastAttempt.current = '';
-      const fresh = { ...initialState(), onboardingCompleted: true };
+      // A fresh workspace starts at onboarding again, so the next launch shows setup instead of an empty Today.
+      const fresh = initialState();
       sessionSnapshot = fresh; setSession(fresh); setRetryToken((current) => current + 1);
       writesPaused = false;
       return true;

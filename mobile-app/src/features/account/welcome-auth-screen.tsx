@@ -77,21 +77,17 @@ function hexRgb(hex: string) {
 type WelcomeAuthScreenProps = {
   accountConfigured: boolean;
   busy: boolean;
-  skipBusy: boolean;
   onApple: () => void;
   onGoogle: () => void;
   onGuest: () => void;
-  onSkip: () => void;
 };
 
 export function WelcomeAuthScreen({
   accountConfigured,
   busy,
-  skipBusy,
   onApple,
   onGoogle,
   onGuest,
-  onSkip,
 }: WelcomeAuthScreenProps) {
   const palette = useTheme();   const styles = useThemedStyles(createStyles);
   const { width, height } = useWindowDimensions();
@@ -164,16 +160,6 @@ export function WelcomeAuthScreen({
           {!accountConfigured ? <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest mode is ready. Account sign-in is not configured on this build.</Text> : <Text style={[styles.privacyNote, textStyleForVisualStyle(visualStyle)]}>Guest plans stay on this device. Sync is your choice.</Text>}
         </ScrollView>
       </View>
-      <SquirclePressable
-        onPress={onSkip}
-        disabled={busy || skipBusy}
-        style={({ pressed }) => [styles.skipButton, pressed && !busy && !skipBusy && styles.skipPressed, (busy || skipBusy) && styles.actionDisabled, { top: insets.top + 10 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Skip account setup and start as a guest"
-      >
-        <Text style={[styles.skipText, textStyleForVisualStyle(visualStyle)]}>{skipBusy ? 'Starting' : 'Use Guest'}</Text>
-        <AppIcon name="arrow" size={16} color={palette.ink} />
-      </SquirclePressable>
     </View>
   );
 }
@@ -193,7 +179,4 @@ const createStyles = (palette: AppTheme) => {   return StyleSheet.create({
   actionLabelSecondary: { color: palette.ink },
   actionDisabled: { opacity: 0.55 },
   privacyNote: { marginTop: 15, color: palette.muted, fontFamily: 'Satoshi', fontSize: 11, lineHeight: 16, textAlign: 'center' },
-  skipButton: { position: 'absolute', zIndex: 10, right: 22, minWidth: 80, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: palette.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  skipPressed: { backgroundColor: palette.surface },
-  skipText: { color: palette.ink, fontFamily: 'Satoshi', fontSize: 13, fontWeight: '400' },
 }); };
