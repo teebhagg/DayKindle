@@ -113,9 +113,9 @@ test('rendered selected states and primary labels preserve contrast in both mode
   const cases = [
     ['src/features/home/history-screen.tsx', 'selectedDateText', 'dateButtonSelected'],
     ['src/features/home/history-screen.tsx', 'selectedWeekDateMeta', 'dateButtonSelected'],
-    ['src/features/home/home-screen.tsx', 'primaryButtonText', 'primaryButton'],
-    ['src/features/home/home-screen.tsx', 'progressRangeTextSelected', 'progressRangeButtonSelected'],
-    ['src/features/home/home-screen.tsx', 'profilePrimaryActionText', 'profilePrimaryAction'],
+    ['src/features/home/home-screen-styles.ts', 'primaryButtonText', 'primaryButton'],
+    ['src/features/home/home-screen-styles.ts', 'progressRangeTextSelected', 'progressRangeButtonSelected'],
+    ['src/features/home/home-screen-styles.ts', 'profilePrimaryActionText', 'profilePrimaryAction'],
     ['src/app/template-detail.tsx', 'optionTextSelected', 'optionSelected'],
     ['src/app/template-detail.tsx', 'dayChipTextSelected', 'dayChipSelected'],
     ['src/app/day-template-detail.tsx', 'dayChipTextSelected', 'dayChipSelected'],
@@ -157,6 +157,23 @@ test('Profile keeps sign-in for guests and sync plus sign-out actions for signed
   assert.doesNotMatch(profile, /account\.configured \? <>[\s\S]*?Sign in<\/PageText>[\s\S]*?: <PageText/);
 });
 
+test('iOS native action button Host does not reapply the container safe area', () => {
+  const relativePath = 'src/components/native-action-button.ios.tsx';
+  const source = fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+  const file = ts.createSourceFile(relativePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const hosts = [];
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) && node.tagName.getText(file) === 'Host') hosts.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  assert.equal(hosts.length, 1, 'the native button should keep one SwiftUI Host');
+  const ignoreSafeArea = hosts[0].attributes.properties.find((attribute) =>
+    ts.isJsxAttribute(attribute) && attribute.name.getText(file) === 'ignoreSafeArea');
+  assert.ok(ignoreSafeArea && ts.isStringLiteral(ignoreSafeArea.initializer), 'Host should set ignoreSafeArea explicitly');
+  assert.equal(ignoreSafeArea.initializer.text, 'container');
+});
+
 test('the animated squircle splash writes the brand name, lasts at least two seconds, and honors reduced motion', () => {
   const splash = fs.readFileSync(path.join(__dirname, '..', 'src/features/home/animated-splash.tsx'), 'utf8');
   const session = fs.readFileSync(path.join(__dirname, '..', 'src/features/home/home-session.tsx'), 'utf8');
@@ -171,7 +188,7 @@ test('the animated squircle splash writes the brand name, lasts at least two sec
   assert.match(splash, /withDelay\(POST_REVEAL_HOLD_MS, withTiming\(2\.001/);
   assert.match(splash, /reduceMotion \? 180 : REVEAL_DURATION/);
   assert.match(splash, /DayKindle/);
-  assert.match(splash, /SquircleSurface style=\{styles\.logoSquircle\} radius=\{logoSize \* 0\.32\}/);
+  assert.match(splash, /SquircleSurface style=\{styles\.logoSquircle\} radius=\{logoSize \* SplashLogoCornerRadiusRatio\}/);
   assert.doesNotMatch(splash, /createLogoMorphPath|logoMorphProgress/);
   assert.match(splash, /Skia\.Path\.MakeFromText\(WORDMARK\[index\]/);
   assert.match(splash, /start=\{0\} end=\{trimProgress\}/);
@@ -186,7 +203,7 @@ test('the animated squircle splash writes the brand name, lasts at least two sec
   assert.match(splash, /const revealDelay = hasTarget \? \(reduceMotion \? REDUCED_MOTION_FADE_DURATION_MS : LOGO_EXIT_DURATION\) : 0/);
   assert.match(splash, /if \(hasTarget && !reduceMotion\)/);
   assert.match(splash, /if \(!hasTarget \|\| reduceMotion\)/);
-  assert.match(splash, /opacity: revealProgress \* \(1 - exitProgress\)/);
+  assert.match(splash, /opacity: 1 - exitProgress/);
   assert.match(splash, /setTimeout\(revealScreen, revealDelay\)/);
   assert.match(splash, /opacity: 1 - destinationRevealProgress\.value/);
   assert.match(splash, /backdropStyle/);
@@ -211,7 +228,7 @@ test('the animated squircle splash writes the brand name, lasts at least two sec
   assert.match(firstScreen, /canFlySplashLogo = showingWelcome/);
   assert.match(firstScreen, /measureInWindow/);
   assert.match(firstScreen, /DAYKINDLE_LOGO/);
-  assert.match(firstScreen, /<SquircleSurface style=\{styles\.sunLogoSquircle\} radius=\{30\}/);
+  assert.match(firstScreen, /<SquircleSurface style=\{styles\.sunLogoSquircle\} radius=\{SPLASH_LOGO_TARGET_SIZE \* SplashLogoCornerRadiusRatio\}/);
   assert.doesNotMatch(firstScreen, /<AppIcon name="sun" size=\{64\}/);
   const layout = fs.readFileSync(path.join(__dirname, '..', 'src/app/_layout.tsx'), 'utf8');
   assert.match(layout, /splashTransitionReady \? 'dark-content' : 'light-content'/);
@@ -219,11 +236,89 @@ test('the animated squircle splash writes the brand name, lasts at least two sec
   assert.match(tabsLayout, /reportNoTarget\(\)/);
 });
 
-test('shared card surfaces use a ten-percent squircle corner depth', () => {
+test('squircle borders use the same path on both platforms, including text fields', () => {
   const surface = fs.readFileSync(path.join(__dirname, '..', 'src/components/squircle-surface.tsx'), 'utf8');
   const cards = fs.readFileSync(path.join(__dirname, '..', 'src/components/squircle-card.tsx'), 'utf8');
+  const textInput = fs.readFileSync(path.join(__dirname, '..', 'src/components/app-text-input.tsx'), 'utf8');
+  const templates = fs.readFileSync(path.join(__dirname, '..', 'src/app/templates.tsx'), 'utf8');
 
-  assert.match(surface, /CARD_SQUIRCLE_RADIUS_RATIO = 0\.1/);
+  assert.match(surface, /CARD_SQUIRCLE_RADIUS_RATIO = 0\.14/);
   assert.match(surface, /Math\.min\(width, height\) \* CARD_SQUIRCLE_RADIUS_RATIO/);
-  assert.match(cards, /squircleRadiusForSize\(size\.width, size\.height\)/);
+  assert.match(surface, /const CORNER_SMOOTHING = 0\.9/);
+  assert.match(surface, /createSmoothedPath\(size\.width, size\.height, cornerRadius\)/);
+  assert.match(surface, /MaskedView/);
+  assert.doesNotMatch(surface, /AndroidHomeCardBordersContext|shouldDrawStroke|Platform\.OS !== 'android'/);
+  assert.match(surface, /<Path path=\{path\} color=\{String\(stroke\)\}/);
+  assert.match(surface, /Platform\.OS === 'android'\s*\? <Path path=\{androidStrokePath \?\? path\}/);
+  assert.doesNotMatch(surface, /borderRadius: Math\.min\(cornerRadius/);
+  assert.match(textInput, /borderColor: borderless \? 'transparent' : error \? theme\.error : theme\.line/);
+  assert.match(textInput, /<SquircleSurface pointerEvents="none" style=\{\[StyleSheet\.absoluteFill/);
+  assert.match(templates, /TEMPLATE_CARD_RADIUS_RATIO = 0\.12/);
+  assert.match(templates, /<SquirclePressable nativeShape radiusRatio=\{TEMPLATE_CARD_RADIUS_RATIO\} onPress=\{\(\) => Keyboard\.dismiss\(\)\}/);
+  assert.doesNotMatch(templates, /zoomCardContentAndroid/);
+  assert.match(cards, /const surfacePathRadius = radius \/ 1\.9/);
+  assert.match(cards, /Math\.min\(size\.width, size\.height\) \* radiusRatio/);
+});
+
+test('Today date strip labels the current day and keeps seven dates easy to scan', () => {
+  const home = fs.readFileSync(path.join(__dirname, '..', 'src/features/home/home-screen.tsx'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'src/features/home/home-screen-styles.ts'), 'utf8');
+
+  assert.match(home, /const days = \['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'\]/);
+  assert.match(home, /style=\{\[styles\.dayPillSlot, isToday && styles\.dayPillTodaySlot\]\}/);
+  assert.match(home, /isToday && <View pointerEvents="none" style=\{styles\.dayTodayRing\} \/>/);
+  assert.match(home, /\{day\}/);
+  assert.doesNotMatch(home, /\{isToday \? 'TODAY' : day\}/);
+  assert.match(home, /accessibilityState=\{\{ selected: isSelected \}\}/);
+  assert.match(styles, /dayPill: \{ flex: 1, minWidth: 0, minHeight: 70, borderRadius: Radius\.pill/);
+  assert.match(styles, /dayTodayRing: \{ position: 'absolute', top: -3, right: -3, bottom: -3, left: -3/);
+  assert.match(styles, /dayPillToday: \{ backgroundColor: palette\.warmSurface/);
+});
+
+test('Android header fade starts with 90% white and eases to transparent', () => {
+  const theme = fs.readFileSync(path.join(__dirname, '..', 'src/constants/theme.ts'), 'utf8');
+  const edgeBlur = fs.readFileSync(path.join(__dirname, '..', 'src/components/progressive-edge-blur.tsx'), 'utf8');
+
+  assert.match(theme, /SplashLogoCornerRadiusRatio = 0\.17/);
+  assert.match(edgeBlur, /ANDROID_TOP_FADE_CURVE = \[\[0, 0\.9\]/);
+  assert.match(edgeBlur, /androidTopFadeStops\(topFadeStart\)/);
+  assert.match(edgeBlur, /start, 0\.9/);
+  assert.match(edgeBlur, /gradientSurfaceColor = Platform\.OS === 'android' && edge === 'top' \? '#FFFFFF'/);
+  assert.match(edgeBlur, /Platform\.OS === 'android' && edge === 'top' \? \{ opacity: 1 \}/);
+});
+
+test('only semantic headings keep 500-plus weights', () => {
+  const expectedHeadingStyles = {
+    'src/app/day-template-detail.tsx': ['collapsedTitle', 'title', 'blockSheetTitle'],
+    'src/app/full-day-templates.tsx': ['collapsedTitle', 'heading'],
+    'src/app/index.tsx': ['previewFormalHeading'],
+    'src/app/template-detail.tsx': ['collapsedTitle', 'title'],
+    'src/app/templates.tsx': ['collapsedTitle', 'heading', 'schedulePreviewTitle'],
+    'src/components/themed-text.tsx': ['title', 'subtitle'],
+    'src/components/toast/toast.theme.ts': [],
+    'src/features/account/guest-workspace-sign-in-tray.tsx': ['trayTitle'],
+    'src/features/account/sync-consent-dialog.tsx': ['title'],
+    'src/features/account/welcome-auth-screen.tsx': ['title'],
+    'src/features/home/daily-check-in-sheet.tsx': ['title', 'sectionTitle'],
+    'src/features/home/history-screen.tsx': ['collapsedTitle', 'periodTitle', 'activityHeadingTitle'],
+    'src/features/home/home-screen-styles.ts': [
+      'screenHeaderTitle', 'greeting', 'sectionTitle', 'pageHeading', 'accountActionTitle', 'sheetTitle',
+    ],
+    'src/shared/components/organisms/tray/index.tsx': ['title'],
+  };
+  const styleWeight = /([A-Za-z_$][\w$]*)\s*:\s*\{[^{}]*?fontWeight\s*:\s*['"]?([5-9]\d\d)['"]?/g;
+
+  for (const [file, expectedStyles] of Object.entries(expectedHeadingStyles)) {
+    const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+    const actualStyles = [...source.matchAll(styleWeight)].map((match) => match[1]).sort();
+    assert.deepEqual(actualStyles, [...expectedStyles].sort(), `${file} should assign heavier weights only to heading styles`);
+  }
+
+  const pageText = fs.readFileSync(path.join(__dirname, '..', 'src/features/home/page-text.tsx'), 'utf8');
+  const themedText = fs.readFileSync(path.join(__dirname, '..', 'src/components/themed-text.tsx'), 'utf8');
+  const providerTypography = fs.readFileSync(path.join(__dirname, '..', 'src/features/account/auth-provider-typography.ts'), 'utf8');
+  assert.match(pageText, /heading = false/);
+  assert.match(pageText, /fontWeight: heading \? '600' : expressive \? '400' : '200'/);
+  assert.match(themedText, /fontWeight: type === 'title' \|\| type === 'subtitle' \? 600 : visualStyle === 'expressive' \? 400 : 200/);
+  assert.match(providerTypography, /fontWeight: '400' as const/);
 });
