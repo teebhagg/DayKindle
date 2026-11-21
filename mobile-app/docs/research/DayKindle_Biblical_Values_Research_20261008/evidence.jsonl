@@ -1,0 +1,16 @@
+{"id":"E01","source_id":"S01","locator":"PRODUCT.md lines 7, 17-19, 36","quote":"help people resume after a missed action","claim_ids":["C01"]}
+{"id":"E02","source_id":"S01","locator":"PRODUCT.md lines 19, 36","quote":"should not treat missed plans as failure","claim_ids":["C01","C06"]}
+{"id":"E03","source_id":"S02","locator":"Proverbs 21:5 NIV","quote":"The plans of the diligent lead to profit","claim_ids":["C02"]}
+{"id":"E04","source_id":"S03","locator":"Psalm 90:12 NIV","quote":"Teach us to number our days","claim_ids":["C02"]}
+{"id":"E05","source_id":"S04","locator":"Proverbs 16:3 NIV","quote":"Commit to the Lord whatever you do","claim_ids":["C02"]}
+{"id":"E06","source_id":"S05","locator":"Galatians 6:9 NIV","quote":"Let us not become weary in doing good","claim_ids":["C03"]}
+{"id":"E07","source_id":"S06","locator":"Luke 16:10 NIV","quote":"trusted with very little","claim_ids":["C03"]}
+{"id":"E08","source_id":"S07","locator":"Philippians 3:12-14 NIV","quote":"I press on toward the goal","claim_ids":["C03"]}
+{"id":"E09","source_id":"S08","locator":"Proverbs 24:15-16 NIV","quote":"the righteous fall seven times, they rise again","claim_ids":["C04"]}
+{"id":"E10","source_id":"S09","locator":"Lamentations 3:22-23 NIV","quote":"They are new every morning","claim_ids":["C04"]}
+{"id":"E11","source_id":"S10","locator":"Book guide, About and Lamentations 3 sections","quote":"memorial to the pain and confusion","claim_ids":["C04"]}
+{"id":"E12","source_id":"S11","locator":"Commentary, discussion of Lam 3:21-24","quote":"hope in the midst of an unrelenting lamentation","claim_ids":["C04"]}
+{"id":"E13","source_id":"S12","locator":"James 1:2-5 NIV","quote":"If any of you lacks wisdom","claim_ids":["C05"]}
+{"id":"E14","source_id":"S13","locator":"Luke 14:25-33 NIV","quote":"tower-building illustration in Luke 14:28-30","claim_ids":["C06"]}
+{"id":"E15","source_id":"S14","locator":"Commentary, Luke 14:25-33","quote":"necessity of counting the cost of discipleship","claim_ids":["C06"]}
+{"id":"E16","source_id":"S15","locator":"Wisdom section, Proverb genre description","quote":"short, pithy sayings expressing a general truth","claim_ids":["C02"]}

@@ -1,0 +1,36 @@
+{
+  "query": "How should the Accountability Tracker apply the linked progressive-blur treatment consistently across relevant iOS and Android screens?",
+  "mode": "standard",
+  "date": "2026-10-04",
+  "assumptions": [
+    "The user confirmed progressive-blur parity on every relevant screen.",
+    "The Reddit post is a reference for the edge effect and its behavior, not for a complete redesign.",
+    "Current worktree changes are user work and must be preserved."
+  ],
+  "provider_config": {
+    "web": "Built-in web search/open",
+    "local_sources": "Project manifest, lockfile, installed expo-backdrop 0.1.1 source"
+  },
+  "source_count": 16,
+  "major_claim_count": 5,
+  "limitations": [
+    "No native build, simulator, emulator, or device validation was run.",
+    "The package does not document testing against the project's exact SDK57 / RN0.86 pair.",
+    "Citation URL checks covered 15 external sources; source 16 is a local workspace inspection and is not publicly URL-verifiable."
+  ],
+  "validation": {
+    "markdown_report": "passed",
+    "html_report": "passed",
+    "citation_urls": "15 external URLs accessible; one local source manually reviewed and intentionally not URL-verifiable",
+    "pdf": "generated, 7 pages"
+  },
+  "outputs": [
+    "research_report_20261004_progressive_blur.md",
+    "research_report_20261004_progressive_blur.html",
+    "research_report_20261004_progressive_blur.pdf",
+    "sources.jsonl",
+    "evidence.jsonl",
+    "claims.jsonl",
+    "run_manifest.json"
+  ]
+}

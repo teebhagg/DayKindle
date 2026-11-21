@@ -1,0 +1,25 @@
+{
+  "query": "Look for Bible Scriptures that this app qualities fall in line with",
+  "scope": "Thematic alignment between DayKindle's documented product qualities and Bible passages",
+  "mode": "quick focused research",
+  "assumptions": [
+    "Alignment means thematic resonance, not proof of biblical status or spiritual efficacy.",
+    "PRODUCT.md is the first-party source of current product qualities.",
+    "NIV is used consistently for passage references and brief excerpts."
+  ],
+  "retrieval_date": "2026-10-08",
+  "provider": "Web search and direct source pages",
+  "source_count": 15,
+  "primary_translation": "New International Version (NIV)",
+  "claim_support_statuses": [
+    "supported_by_first_party_spec",
+    "supported_as_thematic_synthesis",
+    "supported_with_contextual_qualification",
+    "supported_by_primary_text_and_commentary"
+  ],
+  "limitations": [
+    "App-to-Scripture connections are interpretive.",
+    "Passages must be read in their literary and theological contexts.",
+    "No claim is made that DayKindle currently displays Scripture or provides pastoral guidance."
+  ]
+}
