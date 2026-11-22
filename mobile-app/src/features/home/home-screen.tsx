@@ -219,11 +219,13 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true, ch
   const tabIndicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tabIndicatorIndex.value * tabSlotWidth }] }), [tabSlotWidth]);
   const [openedCheckInDate, setOpenedCheckInDate] = useState<string | null>(null);
   const [openedCheckInPeriod, setOpenedCheckInPeriod] = useState<CheckInRequest['period'] | undefined>(undefined);
+  const [openedCheckInRequestKey, setOpenedCheckInRequestKey] = useState<string | undefined>(undefined);
   // Opens the sheet once per request key. Adjusting state during render avoids an extra effect pass.
   const [handledCheckInKey, setHandledCheckInKey] = useState<string | null>(null);
   if (checkInRequest && checkInRequest.key !== handledCheckInKey) {
     setHandledCheckInKey(checkInRequest.key);
     setOpenedCheckInPeriod(checkInRequest.period);
+    setOpenedCheckInRequestKey(checkInRequest.key);
     setOpenedCheckInDate(dateKey());
   }
   const [progressRangeId, setProgressRangeId] = useState<ProgressRangeId>('7d');
@@ -820,7 +822,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true, ch
     if (result === 'failed') return;
     if (!checkInReminders.length) toast.success('Check-in reminders removed', { description: 'Saved on this device.' });
     else if (result === 'scheduled') toast.success('Check-in times saved', { description: 'Check-in reminders are set on this device.' });
-    else toast.warning('Check-in times saved', { description: 'Allow notifications in device settings to receive check-in reminders.' });
+    else toast.warning('Check-in times saved', { description: 'Reminders are not scheduled yet. See the reminder message for details.' });
   };
   const removeNotificationReminder = async (id: string) => {
     if (savingReminder) return;
@@ -1540,7 +1542,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true, ch
         </BottomSheetScrollView></SheetKeyboard></BottomSheetView>
       </BottomSheet>
 
-      {openedCheckInDate && <DailyCheckInSheet date={openedCheckInDate} initialPeriod={openedCheckInPeriod} onClose={() => { setOpenedCheckInDate(null); setOpenedCheckInPeriod(undefined); }} />}
+      {openedCheckInDate && <DailyCheckInSheet key={openedCheckInDate} date={openedCheckInDate} initialPeriod={openedCheckInPeriod} requestKey={openedCheckInRequestKey} onClose={() => { setOpenedCheckInDate(null); setOpenedCheckInPeriod(undefined); setOpenedCheckInRequestKey(undefined); }} />}
 
       {(accountActionDialog === 'disableSync' || (Platform.OS === 'ios' && (accountActionDialog === 'deleteGuest' || accountActionDialog === 'deleteAccount'))) && <Modal
         visible

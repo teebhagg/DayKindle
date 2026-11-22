@@ -18,7 +18,7 @@ import { posthog } from '../../lib/posthog';
 
 
 type CheckInPeriod = 'morning' | 'evening';
-type DailyCheckInSheetProps = { date: string; onClose: () => void; initialPeriod?: CheckInPeriod };
+type DailyCheckInSheetProps = { date: string; onClose: () => void; initialPeriod?: CheckInPeriod; requestKey?: string };
 
 function SheetText({
   children,
@@ -72,7 +72,7 @@ function isEntryComplete(entry: HomeEntry, date: string) {
     : entry.completedDates?.includes(date) ?? entry.completed;
 }
 
-export default function DailyCheckInSheet({ date, onClose, initialPeriod }: DailyCheckInSheetProps) {
+export default function DailyCheckInSheet({ date, onClose, initialPeriod, requestKey }: DailyCheckInSheetProps) {
   const palette = useTheme();
   const colors = palette;  const styles = useThemedStyles(createStyles);
   const { visualStyle, checkIns, setCheckIns, confirmLocalSave, storageStatus, retrySave, entries, plans } = useHomeSession();
@@ -81,9 +81,9 @@ export default function DailyCheckInSheet({ date, onClose, initialPeriod }: Dail
   const savedCheckIn = checkIns.find((item) => item.date === date);
   const plannedEntries = entries.filter((entry) => entry.date === date && entry.type !== 'goal');
   const [period, setPeriod] = useState<CheckInPeriod>(initialPeriod ?? (savedCheckIn?.morning ? 'morning' : savedCheckIn?.evening ? 'evening' : 'morning'));
-  // A reminder for the other period can arrive while the sheet is open: switch to it, keeping drafts.
-  const [requestedPeriod, setRequestedPeriod] = useState(initialPeriod);
-  if (initialPeriod !== requestedPeriod) { setRequestedPeriod(initialPeriod); if (initialPeriod) setPeriod(initialPeriod); }
+  // Each reminder request re-selects its period, even when it matches the one shown; drafts are kept.
+  const [handledRequestKey, setHandledRequestKey] = useState(requestKey);
+  if (requestKey !== handledRequestKey) { setHandledRequestKey(requestKey); if (initialPeriod) setPeriod(initialPeriod); }
   const [morningMood, setMorningMood] = useState(savedCheckIn?.morning?.mood ?? 3);
   const [morningEnergy, setMorningEnergy] = useState(savedCheckIn?.morning?.energy ?? 3);
   const [morningSleep, setMorningSleep] = useState(savedCheckIn?.morning?.sleepQuality ?? 3);
