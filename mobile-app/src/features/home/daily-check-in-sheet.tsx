@@ -18,7 +18,7 @@ import { posthog } from '../../lib/posthog';
 
 
 type CheckInPeriod = 'morning' | 'evening';
-type DailyCheckInSheetProps = { date: string; onClose: () => void };
+type DailyCheckInSheetProps = { date: string; onClose: () => void; initialPeriod?: CheckInPeriod };
 
 function SheetText({
   children,
@@ -72,7 +72,7 @@ function isEntryComplete(entry: HomeEntry, date: string) {
     : entry.completedDates?.includes(date) ?? entry.completed;
 }
 
-export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetProps) {
+export default function DailyCheckInSheet({ date, onClose, initialPeriod }: DailyCheckInSheetProps) {
   const palette = useTheme();
   const colors = palette;  const styles = useThemedStyles(createStyles);
   const { visualStyle, checkIns, setCheckIns, confirmLocalSave, storageStatus, retrySave, entries, plans } = useHomeSession();
@@ -80,7 +80,7 @@ export default function DailyCheckInSheet({ date, onClose }: DailyCheckInSheetPr
   const insets = useSafeAreaInsets();
   const savedCheckIn = checkIns.find((item) => item.date === date);
   const plannedEntries = entries.filter((entry) => entry.date === date && entry.type !== 'goal');
-  const [period, setPeriod] = useState<CheckInPeriod>(savedCheckIn?.morning ? 'morning' : savedCheckIn?.evening ? 'evening' : 'morning');
+  const [period, setPeriod] = useState<CheckInPeriod>(initialPeriod ?? (savedCheckIn?.morning ? 'morning' : savedCheckIn?.evening ? 'evening' : 'morning'));
   const [morningMood, setMorningMood] = useState(savedCheckIn?.morning?.mood ?? 3);
   const [morningEnergy, setMorningEnergy] = useState(savedCheckIn?.morning?.energy ?? 3);
   const [morningSleep, setMorningSleep] = useState(savedCheckIn?.morning?.sleepQuality ?? 3);

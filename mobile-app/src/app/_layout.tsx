@@ -100,7 +100,9 @@ function ReminderNotificationActionHandler() {
           }
           await Notifications.dismissNotificationAsync(notification.request.identifier);
         } else if (response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
-          router.push('/profile');
+          const checkInPeriod = reminders.find((item) => item.id === reminderId)?.checkInPeriod;
+          if (checkInPeriod) router.push({ pathname: '/(tabs)', params: { checkIn: checkInPeriod, at: String(Date.now()) } });
+          else router.push('/profile');
         }
       } catch (error) {
         console.warn('Could not process a reminder notification action.', error);

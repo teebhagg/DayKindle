@@ -27,6 +27,7 @@ import { BottomSheet, BottomSheetScrollView, BottomSheetView } from '@expo/ui/co
 import NativeDatePickerPopover from './native-date-picker-popover';
 import { VisualStyleContext } from './visual-style-context';
 import DailyCheckInSheet from './daily-check-in-sheet';
+import { buildCheckInReminders, EVENING_CHECK_IN_LEAD_MINUTES, isClockTime, replaceCheckInReminders } from './check-in-reminders';
 import { useAccount } from '../account/account-provider';
 import GuestWorkspaceSignInTray, { type GuestWorkspaceSignInTrayHandle } from '../account/guest-workspace-sign-in-tray';
 import { getProfileAvatarUri, getProfileDisplayName, getProfileProviderLabel, ProfileAvatar } from '../account/profile-identity';
@@ -182,7 +183,10 @@ const completionStyles = StyleSheet.create({
 });
 
 export type HomeTab = 'today' | 'goals' | 'progress' | 'profile';
-type HomeScreenProps = { initialTab?: HomeTab; showTabBar?: boolean };
+// Set when a check-in reminder is tapped. `key` changes on every tap so a repeat tap still opens the sheet.
+export type CheckInRequest = { period: 'morning' | 'evening'; key: string };
+
+type HomeScreenProps = { initialTab?: HomeTab; showTabBar?: boolean; checkInRequest?: CheckInRequest };
 
 // iOS bottom sheets are native and handle the keyboard themselves; an extra
 // KeyboardAvoidingView adds dead space and clips the sheet footer there.
@@ -191,7 +195,7 @@ function SheetKeyboard({ children }: { children: import('react').ReactNode }) {
   return <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>{children}</KeyboardAvoidingView>;
 }
 
-export default function HomeScreen({ initialTab = 'today', showTabBar = true }: HomeScreenProps) {
+export default function HomeScreen({ initialTab = 'today', showTabBar = true, checkInRequest }: HomeScreenProps) {
   const palette = useTheme();
   const colors = palette;  const styles = useThemedStyles(createHomeScreenStyles);
   const plannerSession = useHomeSession();
@@ -214,6 +218,14 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
   }, [tabIndex, reduceMotion, tabIndicatorIndex]);
   const tabIndicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tabIndicatorIndex.value * tabSlotWidth }] }), [tabSlotWidth]);
   const [openedCheckInDate, setOpenedCheckInDate] = useState<string | null>(null);
+  const [openedCheckInPeriod, setOpenedCheckInPeriod] = useState<CheckInRequest['period'] | undefined>(undefined);
+  // Opens the sheet once per request key. Adjusting state during render avoids an extra effect pass.
+  const [handledCheckInKey, setHandledCheckInKey] = useState<string | null>(null);
+  if (checkInRequest && checkInRequest.key !== handledCheckInKey) {
+    setHandledCheckInKey(checkInRequest.key);
+    setOpenedCheckInPeriod(checkInRequest.period);
+    setOpenedCheckInDate(dateKey());
+  }
   const [progressRangeId, setProgressRangeId] = useState<ProgressRangeId>('7d');
   const [showAllAchievements, setShowAllAchievements] = useState(false);
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState<string[]>([]);
@@ -791,6 +803,22 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
     setNotificationTitle(''); setNotificationTime(''); setNotificationRepeat('once'); setNotificationImportance('normal'); setNotificationDate(dateKey());
     if (result === 'scheduled') toast.success('Reminder scheduled', { description: 'Saved on this device.' });
   };
+  const [wakeTimeDraft, setWakeTimeDraft] = useState(onboarding?.wakeTime ?? '');
+  const [sleepTimeDraft, setSleepTimeDraft] = useState(onboarding?.sleepTime ?? '');
+  const saveCheckInTimes = async () => {
+    if (savingReminder) return;
+    const wakeTime = wakeTimeDraft.trim();
+    const sleepTime = sleepTimeDraft.trim();
+    if (wakeTime && !isClockTime(wakeTime)) { toast.error('Enter wake time as HH:MM, such as 07:00.'); return; }
+    if (sleepTime && !isClockTime(sleepTime)) { toast.error('Enter sleep time as HH:MM, such as 23:00.'); return; }
+    if (!onboarding) { toast.error('Finish setting up your planner first.'); return; }
+    setSavingReminder(true);
+    setOnboarding({ ...onboarding, wakeTime: wakeTime || undefined, sleepTime: sleepTime || undefined });
+    const checkInReminders = buildCheckInReminders({ wakeTime: wakeTime || undefined, sleepTime: sleepTime || undefined });
+    const result = await applyNotificationReminders(replaceCheckInReminders(reminders, checkInReminders), true);
+    setSavingReminder(false);
+    if (result !== 'failed') toast.success('Check-in times saved', { description: checkInReminders.length ? 'Check-in reminders are set on this device.' : 'Check-in reminders removed.' });
+  };
   const removeNotificationReminder = async (id: string) => {
     if (savingReminder) return;
     setSavingReminder(true);
@@ -1256,6 +1284,16 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
             </SquircleView>
           </SquircleCard>)}
           <SquircleCard style={styles.onboardingCard}>
+            <SquircleView style={styles.onboardingCardHeading}><AppIcon name="clock" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Daily check-ins</PageText></SquircleView>
+            <PageText style={[styles.sectionSubtitle, styles.profileHighContrastCopy]}>Enter your usual wake and bedtime. You will get a morning and an evening check-in reminder.</PageText>
+            <PageText style={styles.profileDetailLabel}>WAKE TIME · 24-HOUR FORMAT</PageText>
+            <TextInput hideLabel value={wakeTimeDraft} onChangeText={setWakeTimeDraft} editable={!savingReminder} placeholder="07:00" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={styles.addInput} accessibilityLabel="Wake time" />
+            <PageText style={styles.profileDetailLabel}>SLEEP TIME · 24-HOUR FORMAT</PageText>
+            <TextInput hideLabel value={sleepTimeDraft} onChangeText={setSleepTimeDraft} editable={!savingReminder} placeholder="23:00" placeholderTextColor={palette.muted} keyboardType="numbers-and-punctuation" maxLength={5} style={styles.addInput} accessibilityLabel="Sleep time" />
+            <PageText style={styles.reminderFootnote}>The evening check-in arrives {EVENING_CHECK_IN_LEAD_MINUTES} minutes before your sleep time. Clear a time to remove its reminder.</PageText>
+            <NativeActionButton label="Save check-in times" systemImage="checkmark" onPress={() => void saveCheckInTimes()} disabled={savingReminder} style={styles.primaryButton}><PageText style={styles.primaryButtonText}>Save times</PageText></NativeActionButton>
+          </SquircleCard>
+          <SquircleCard style={styles.onboardingCard}>
             <SquircleView style={styles.profileReminderHeading}>
               <SquircleView style={[styles.onboardingCardHeading, styles.profileReminderTitle]}><AppIcon name="clock" style={visualStyle} size={19} color={colors.green} /><PageText display heading={false} style={styles.onboardingCardTitle}>Reminders</PageText></SquircleView>
               <NativeActionButton label={notificationFormOpen ? 'Close reminder form' : 'Add reminder'} systemImage={notificationFormOpen ? 'xmark' : 'plus'} onPress={() => { setNotificationFormOpen((open) => !open); setNotificationFeedback(null); }} appearance="plain" tintColor={colors.green} labelColor={colors.green} style={[styles.inlineAction, styles.profileCenteredInlineAction]}><PageText style={styles.inlineActionText}>{notificationFormOpen ? 'Close' : 'Add'}</PageText></NativeActionButton>
@@ -1499,7 +1537,7 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true }: 
         </BottomSheetScrollView></SheetKeyboard></BottomSheetView>
       </BottomSheet>
 
-      {openedCheckInDate && <DailyCheckInSheet date={openedCheckInDate} onClose={() => setOpenedCheckInDate(null)} />}
+      {openedCheckInDate && <DailyCheckInSheet date={openedCheckInDate} initialPeriod={openedCheckInPeriod} onClose={() => { setOpenedCheckInDate(null); setOpenedCheckInPeriod(undefined); }} />}
 
       {(accountActionDialog === 'disableSync' || (Platform.OS === 'ios' && (accountActionDialog === 'deleteGuest' || accountActionDialog === 'deleteAccount'))) && <Modal
         visible
