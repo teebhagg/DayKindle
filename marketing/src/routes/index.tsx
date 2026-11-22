@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
-import { ArrowRight, CalendarDays, Check, MoveRight } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, MoveRight, Pointer } from 'lucide-react'
 import InteractivePreview from '@/components/InteractivePreview'
 import ScrollReveal from '@/components/ScrollReveal'
 import { siteUrl } from '@/lib/site'
@@ -119,9 +119,10 @@ function HomePage() {
             <p className="hero-description handrawn-copy">
               Keep goals, routines, and daily actions together. Make a plan for today, then move things around when the day changes.
             </p>
+            <p className="mobile-availability"><span aria-hidden="true" /> Mobile app coming soon</p>
             <div className="hero-actions">
-              <a className="hero-button" href="#app-screens">Explore the app <ArrowRight size={17} aria-hidden="true" /></a>
-              <a className="hero-text-link" href="#sample-day">Try the sample day <ArrowRight size={15} aria-hidden="true" /></a>
+              <a className="hero-button" href="#sample-day">Try the sample day <ArrowRight size={17} aria-hidden="true" /></a>
+              <a className="hero-text-link" href="#app-screens">View app screens <ArrowRight size={15} aria-hidden="true" /></a>
             </div>
           </div>
         </ScrollReveal>
@@ -250,8 +251,19 @@ function HomePage() {
         <ScrollReveal>
           <div className="sample-copy">
             <p className="eyebrow"><span className="eyebrow-dot" /> Give it a try</p>
-            <h2 id="sample-heading">Tap through a sample day.</h2>
-            <p className="handrawn-copy">Mark an action done or move it to tomorrow. This small demo won’t save anything.</p>
+            <h2 id="sample-heading">See a sample day.</h2>
+            <p className="handrawn-copy">Choose a date and check off an action. This preview won’t save your changes.</p>
+            <div className="mobile-preview-gesture-guides" role="note" aria-label="How to explore the interactive preview">
+              <span className="mobile-preview-gesture-guide">
+                <span className="mobile-preview-gesture-pointer is-scrolling" aria-hidden="true"><Pointer size={18} strokeWidth={1.8} /></span>
+                <span>Scroll to explore</span>
+              </span>
+              <span className="mobile-preview-gesture-guide">
+                <span className="mobile-preview-gesture-pointer is-clicking" aria-hidden="true"><Pointer size={18} strokeWidth={1.8} /></span>
+                <span className="mobile-preview-desktop-action">Click a date or action</span>
+                <span className="mobile-preview-touch-action">Press a date or action</span>
+              </span>
+            </div>
           </div>
         </ScrollReveal>
         <ScrollReveal delay={35}>
@@ -281,7 +293,7 @@ function HomePage() {
           <p className="eyebrow"><span className="eyebrow-dot" /> Guest mode</p>
           <h2>Start without an account.</h2>
           <p className="handrawn-copy">
-            In the mobile app, Guest mode keeps planner data on this device. Add goals and routines, record daily actions, and write a reflection when you want to review the week.
+            When the mobile app launches, Guest mode will keep planner data on your device. You’ll be able to add goals and routines, record daily actions, and write a reflection when you want to review the week.
           </p>
           <p className="guest-note handrawn-copy">
             Reminders are scheduled on your device and depend on your notification settings.

@@ -1,209 +1,262 @@
-import { useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ArrowRight, Check, MoveRight, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import {
+  ArrowRight,
+  CalendarDays,
+  ChartNoAxesColumn,
+  Check,
+  Flag,
+  House,
+  Plus,
+  Signal,
+  UserRound,
+  Wifi,
+  BatteryFull,
+} from 'lucide-react'
 
-type PreviewStage = 'plan' | 'today' | 'adjust'
-
-const stages: Array<{ id: PreviewStage; label: string }> = [
-  { id: 'plan', label: 'Plan' },
-  { id: 'today', label: 'Today' },
-  { id: 'adjust', label: 'Adjust' },
+const sampleActions = [
+  {
+    id: 'start-gently',
+    title: 'Start gently',
+    detail: 'Choose one small thing to begin with intention.',
+    time: 'Morning',
+  },
+  {
+    id: 'focus-priority',
+    title: 'Focus on a priority',
+    detail: 'Make space for one thing that matters today.',
+    time: 'Late morning',
+  },
+  {
+    id: 'pause-reset',
+    title: 'Pause and reset',
+    detail: 'Eat, move, rest, or step away for a few minutes.',
+    time: 'Midday',
+  },
 ]
 
-const actions = [
-  { title: 'Set one small priority', detail: 'Give it a place in your day' },
-  { title: 'Take a short pause', detail: 'Step outside for a moment' },
-  { title: 'Review what worked', detail: 'Write a quick note' },
-]
+function getMonday(date: Date) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  return monday
+}
 
 export default function InteractivePreview() {
-  const [stage, setStage] = useState<PreviewStage>('today')
-  const [hasInteracted, setHasInteracted] = useState(false)
-  const [completed, setCompleted] = useState<number[]>([0])
-  const [movedToTomorrow, setMovedToTomorrow] = useState(false)
   const reduceMotion = useReducedMotion()
-  const stageNumber = String(stages.findIndex((item) => item.id === stage) + 1).padStart(2, '0')
+  const week = useMemo(() => {
+    const monday = getMonday(new Date())
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(monday)
+      date.setDate(monday.getDate() + index)
+      return date
+    })
+  }, [])
+  const todayIndex = (new Date().getDay() + 6) % 7
+  const [selectedDay, setSelectedDay] = useState(todayIndex)
+  const [completed, setCompleted] = useState<string[]>(['start-gently'])
+  const [walkComplete, setWalkComplete] = useState(false)
+  const selectedDate = week[selectedDay]
+  const isWeekend = selectedDay > 4
 
-  function toggleAction(index: number) {
+  function toggleAction(id: string) {
     setCompleted((current) =>
-      current.includes(index)
-        ? current.filter((item) => item !== index)
-        : [...current, index],
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     )
   }
 
   return (
-    <div className="preview-wrap">
-      <div className="preview-orbit squircle-edge" aria-hidden="true" />
-        <section id="sample-day" className="preview-shell squircle-edge" aria-label="Interactive sample of the DayKindle planner">
-        <div className="preview-surface">
-          <header className="preview-header">
-            <div className="preview-brand">
-              <span className="preview-brand-mark" aria-hidden="true">
-                <img src="/daykindle-logo.png" alt="" width="28" height="28" />
-              </span>
-              <span>
-                <span className="preview-brand-name">DayKindle</span>
-                <span className="preview-caption">Daily planner</span>
-              </span>
-            </div>
-            <span className="preview-pill">Preview</span>
-          </header>
+    <div className="mobile-preview-wrap">
+      <p className="mobile-preview-caption">
+        <span className="mobile-preview-caption-dot" aria-hidden="true" />
+        DayKindle mobile preview
+      </p>
 
-          <div className="preview-day">
-            <div>
-              <p className="preview-eyebrow">SAMPLE DAY</p>
-              <h2>{stage === 'plan' ? 'Plan a day' : stage === 'adjust' ? 'Adjust the plan' : 'Today'}</h2>
-            </div>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={stage}
-                className="preview-day-mark"
-                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 520, damping: 38 }}
-                aria-hidden="true"
-              >
-                {stageNumber}
-              </motion.span>
-            </AnimatePresence>
+      <section
+        id="sample-day"
+        className="mobile-preview-device"
+        aria-label="Interactive preview of DayKindle’s Today screen"
+      >
+        <span className="mobile-preview-device-control mobile-preview-device-mute" aria-hidden="true" />
+        <span className="mobile-preview-device-control mobile-preview-device-volume" aria-hidden="true" />
+        <span className="mobile-preview-device-control mobile-preview-device-volume mobile-preview-device-volume-secondary" aria-hidden="true" />
+        <span className="mobile-preview-device-control mobile-preview-device-power" aria-hidden="true" />
+        <div className="mobile-preview-screen">
+          <div className="mobile-preview-status" aria-hidden="true">
+            <span>9:41</span>
+            <span className="mobile-preview-status-icons">
+              <Signal size={12} strokeWidth={2} />
+              <Wifi size={13} strokeWidth={2} />
+              <BatteryFull size={14} strokeWidth={2} />
+            </span>
           </div>
 
-          <div className="preview-tabs" role="tablist" aria-label="Preview stages">
-            {stages.map((item) => (
-              <Button
-                key={item.id}
-                type="button"
-                variant="ghost"
-                className={`preview-tab${stage === item.id ? ' is-active' : ''}`}
-                role="tab"
-                aria-selected={stage === item.id}
-                aria-controls="preview-panel"
-                id={'preview-tab-' + item.id}
-                onClick={() => {
-                  setHasInteracted(true)
-                  setStage(item.id)
-                }}
-              >
-                {stage === item.id && (
-                  <motion.span
-                    layoutId="preview-tab-indicator"
-                    className="preview-tab-indicator"
-                    transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 520, damping: 38 }}
-                    aria-hidden="true"
-                  />
-                )}
-                <span className="preview-tab-label">{item.label}</span>
-              </Button>
-            ))}
-          </div>
+          <div className="mobile-preview-scroll">
+            <header className="mobile-preview-heading">
+              <p className="mobile-preview-date">
+                {selectedDate.toLocaleDateString('en', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </p>
+              <h2>
+                Good morning,
+                <span>let’s find your rhythm.</span>
+              </h2>
+              <p className="mobile-preview-intro">See your plan and record what you did.</p>
+            </header>
 
-          <div className="preview-panel" id="preview-panel" role="tabpanel" aria-labelledby={'preview-tab-' + stage}>
-            <motion.div
-              key={stage}
-              className="preview-stage"
-              initial={hasInteracted && !reduceMotion ? { opacity: 0, y: 8 } : { opacity: 1, y: 0 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: reduceMotion ? 0.01 : 0.24, ease: [0.22, 1, 0.36, 1] }}
-            >
-                {stage === 'plan' && (
-                  <div className="stage-note">
-                    <div className="stage-icon"><Sparkles size={18} strokeWidth={1.7} aria-hidden="true" /></div>
-                    <div>
-                      <span className="task-label">MAKE A PLAN</span>
-                      <p>Choose a few actions that fit the day you have.</p>
-                    </div>
-                  </div>
-                )}
-
-                {stage === 'today' && (
-                  <div className="preview-actions">
-                    {actions.map((action, index) => {
-                      const isComplete = completed.includes(index)
-                      return (
-                        <motion.button
-                          key={action.title}
-                          type="button"
-                          className={'preview-action' + (isComplete ? ' is-complete' : '')}
-                          aria-pressed={isComplete}
-                          onClick={() => toggleAction(index)}
-                          whileTap={reduceMotion ? undefined : { scale: 0.985 }}
-                        >
-                          <motion.span
-                            className="task-check"
-                            initial={false}
-                            animate={{ scale: isComplete ? 1 : 0.92 }}
-                            transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 24 }}
-                          >
-                            {isComplete ? <Check size={15} strokeWidth={2.5} /> : null}
-                          </motion.span>
-                          <span className="task-copy">
-                            <span className="task-title">{action.title}</span>
-                            <span className="task-detail">{action.detail}</span>
-                          </span>
-                          <ArrowRight className="task-arrow" size={16} aria-hidden="true" />
-                        </motion.button>
-                      )
+            <div className="mobile-preview-week" role="group" aria-label="Sample week">
+              {week.map((date, index) => {
+                const isSelected = selectedDay === index
+                const isToday = index === todayIndex
+                return (
+                  <button
+                    key={date.toISOString()}
+                    className={`mobile-preview-day${isSelected ? ' is-selected' : ''}${isToday && !isSelected ? ' is-today' : ''}`}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={date.toLocaleDateString('en', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
                     })}
-                  </div>
-                )}
-
-                {stage === 'adjust' && (
-                  <div className="adjust-card">
-                    <div className="adjust-heading">
-                      <div className="adjust-icon" aria-hidden="true"><MoveRight size={19} /></div>
-                      <div>
-                        <span className="task-label">ONE ACTION NEEDS MORE TIME</span>
-                        <p>Move it without changing the rest of your list.</p>
-                      </div>
-                    </div>
-                    <div className="adjust-item">
-                      <span>Review what worked</span>
+                    onClick={() => setSelectedDay(index)}
+                  >
+                    {isSelected && (
                       <motion.span
-                        key={movedToTomorrow ? 'tomorrow' : 'today'}
-                        initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: reduceMotion ? 0.01 : 0.18 }}
-                        aria-live="polite"
-                      >
-                        {movedToTomorrow ? 'Tomorrow' : 'Today'}
-                      </motion.span>
-                    </div>
-                    <Button
+                        layoutId="mobile-preview-selected-day"
+                        className="mobile-preview-day-fill"
+                        transition={reduceMotion ? { duration: 0 } : { duration: 0.075, ease: 'easeInOut' }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="mobile-preview-day-name">
+                      {date.toLocaleDateString('en', { weekday: 'narrow' })}
+                    </span>
+                    <span className="mobile-preview-day-number">{date.getDate()}</span>
+                    {isToday && <span className="mobile-preview-today-dot" aria-label="Today" />}
+                  </button>
+                )
+              })}
+            </div>
+
+            {isWeekend ? (
+              <div className="mobile-preview-rhythm-prompt">
+                <span className="mobile-preview-rhythm-icon" aria-hidden="true">
+                  <CalendarDays size={20} strokeWidth={1.7} />
+                </span>
+                <span className="mobile-preview-rhythm-copy">
+                  <span>Add a weekend rhythm</span>
+                  <small>A routine groups actions into a daily plan.</small>
+                </span>
+                <ArrowRight size={18} strokeWidth={1.7} aria-hidden="true" />
+              </div>
+            ) : (
+              <div className="mobile-preview-routine">
+                <div className="mobile-preview-routine-heading">
+                  <span>
+                    <small>ROUTINE</small>
+                    <strong>A steady weekday</strong>
+                    <small>{completed.length} of 5 routine steps complete</small>
+                  </span>
+                  <ArrowRight size={19} strokeWidth={1.8} aria-hidden="true" />
+                </div>
+                <div className="mobile-preview-routine-meter" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${completed.length / 5})` }} />
+                </div>
+              </div>
+            )}
+
+            <section className="mobile-preview-section" aria-labelledby="preview-tasks-title">
+              <div className="mobile-preview-section-heading">
+                <span>
+                  <h3 id="preview-tasks-title">Things to do</h3>
+                  <small>Your daily checklist</small>
+                </span>
+                <span className="mobile-preview-add" aria-hidden="true"><Plus size={19} strokeWidth={1.8} /></span>
+              </div>
+
+              <div className="mobile-preview-actions">
+                {sampleActions.map((action) => {
+                  const isComplete = completed.includes(action.id)
+                  return (
+                    <motion.button
+                      key={action.id}
                       type="button"
-                      variant="ghost"
-                      className="adjust-link"
-                      aria-pressed={movedToTomorrow}
-                      onClick={() => setMovedToTomorrow((current) => !current)}
+                      className={`mobile-preview-action${isComplete ? ' is-complete' : ''}`}
+                      aria-pressed={isComplete}
+                      onClick={() => toggleAction(action.id)}
+                      whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
                     >
-                      {movedToTomorrow ? 'Move it back to today' : 'Move to tomorrow'}
-                      <ArrowRight size={14} aria-hidden="true" />
-                    </Button>
-                  </div>
-                )}
-            </motion.div>
+                      <motion.span
+                        className="mobile-preview-check"
+                        animate={{
+                          backgroundColor: isComplete ? '#356348' : '#F7F8F5',
+                          borderColor: isComplete ? '#356348' : '#758579',
+                        }}
+                        transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
+                        aria-hidden="true"
+                      >
+                        {isComplete && <Check size={15} strokeWidth={2.5} />}
+                      </motion.span>
+                      <span className="mobile-preview-action-copy">
+                        <span className="mobile-preview-action-title">{action.title}</span>
+                        <small>{action.time} · {isWeekend ? 'Your daily plan' : 'A steady weekday'}</small>
+                        <span className="mobile-preview-action-detail">{action.detail}</span>
+                      </span>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="mobile-preview-section mobile-preview-habits" aria-labelledby="preview-habits-title">
+              <div className="mobile-preview-section-heading">
+                <span>
+                  <h3 id="preview-habits-title">Habits &amp; practices</h3>
+                  <small>Add an action you want to repeat.</small>
+                </span>
+                <span className="mobile-preview-add" aria-hidden="true"><Plus size={19} strokeWidth={1.8} /></span>
+              </div>
+              <motion.button
+                type="button"
+                className={`mobile-preview-habit-row${walkComplete ? ' is-complete' : ''}`}
+                aria-pressed={walkComplete}
+                onClick={() => setWalkComplete((current) => !current)}
+                whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+                transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
+              >
+                <motion.span
+                  className="mobile-preview-habit-mark"
+                  animate={{
+                    backgroundColor: walkComplete ? '#356348' : '#fff',
+                    borderColor: walkComplete ? '#356348' : '#758579',
+                  }}
+                  transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
+                  aria-hidden="true"
+                >
+                  {walkComplete && <Check size={13} strokeWidth={2.5} />}
+                </motion.span>
+                <span>
+                  <strong>Take a short walk</strong>
+                  <small>Movement · 15 minutes</small>
+                </span>
+              </motion.button>
+            </section>
           </div>
 
-          <div className="preview-progress">
-            <div className="preview-progress-top">
-              <span>{stage === 'today' ? 'Sample progress' : stage === 'plan' ? 'Start with a few actions' : 'Change what you need'}</span>
-              <span>{stage === 'today' ? completed.length + ' of 3' : 'Sample'}</span>
-            </div>
-            <div className="progress-track" aria-hidden="true">
-              <motion.span
-                className="progress-value"
-                initial={false}
-                style={{ transformOrigin: 'left center' }}
-                animate={{ scaleX: stage === 'today' ? completed.length / 3 : stage === 'plan' ? 0.38 : 0.68 }}
-                transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeOut' }}
-              />
-            </div>
-            <p className="preview-footnote">This is a sample day. Your plan stays editable.</p>
-          </div>
+          <nav className="mobile-preview-tabs" aria-label="DayKindle app navigation preview">
+            <span className="is-active"><House size={19} strokeWidth={1.8} /><small>Today</small></span>
+            <span><Flag size={19} strokeWidth={1.8} /><small>Goals</small></span>
+            <span><ChartNoAxesColumn size={19} strokeWidth={1.8} /><small>Progress</small></span>
+            <span><UserRound size={19} strokeWidth={1.8} /><small>Profile</small></span>
+          </nav>
         </div>
       </section>
+
+      <p className="mobile-preview-note">Preview only. Your changes are not saved.</p>
     </div>
   )
 }

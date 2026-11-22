@@ -19,8 +19,8 @@ export default function SiteHeader() {
           <img src="/daykindle-logo.png" alt="" width="36" height="36" />
           <span>DayKindle</span>
         </Link>
-        <a className="nav-cta" href="/#app-screens">
-          See the app <ArrowRight size={16} aria-hidden="true" />
+        <a className="nav-cta" href="/#sample-day">
+          Try the sample day <ArrowRight size={16} aria-hidden="true" />
         </a>
       </nav>
     </header>
