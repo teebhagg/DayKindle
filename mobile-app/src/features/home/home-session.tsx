@@ -10,6 +10,7 @@ import { reconcileOverdue, type OccurrenceFields, type OccurrenceStatus } from '
 import { EXPRESSIVE_FONT_SIZE_MULTIPLIER, headingFontFamilyForVisualStyle, textStyleForVisualStyle } from './visual-style-context';
 import { AnimatedSplash } from './animated-splash';
 import { SplashTargetContext, SplashStatusTransitionContext, type SplashTarget } from './splash-transition-context';
+import { isClockTime } from './check-in-reminders';
 
 export type VisualStyle = 'formal' | 'expressive';
 export type EntryType = 'task' | 'habit' | 'goal';
@@ -42,7 +43,7 @@ export function getGoalProgressStatus(goal: StarterPlan): TaskProgressStatus | u
 export type WeeklyReflection = { weekStart: string; wentWell: string; gotInWay: string; nextAdjustment: string; updatedAt: string };
 export type DailyCheckIn = { date: string; morning?: { mood: number; energy: number; sleepQuality: number; intention: string; updatedAt: string }; evening?: { mood: number; energy: number; productivity: number; satisfaction: number; reflection: string; updatedAt: string } };
 export type Commitment = { id: string; title: string; target: string; deadline: string; timeframe: string; why: string; goalId?: string; linkedSourceId?: string; linkedSourceType?: 'task' | 'habit'; requiredActions?: number; reward?: string; consequence?: string; createdAt: string };
-export type NotificationReminder = { id: string; title: string; time: string; repeat: 'once' | 'daily'; importance?: 'normal' | 'important'; date?: string };
+export type NotificationReminder = { id: string; title: string; time: string; repeat: 'once' | 'daily'; importance?: 'normal' | 'important'; date?: string; checkInPeriod?: 'morning' | 'evening' };
 export type AccountType = 'guest' | 'google' | 'apple';
 export type OnboardingProfile = {
   accountType: AccountType; syncConsent: boolean; syncConsentAt: string | null; syncConsentUserId: string | null; routineTemplateIds: string[]; accountabilityEnabled?: false; appearance: VisualStyle;
@@ -158,6 +159,8 @@ function normalizeSession(parsed: Partial<SessionState> & { selectedDay?: number
     syncConsentUserId: typeof legacyOnboarding.syncConsentUserId === 'string' ? legacyOnboarding.syncConsentUserId : null,
     routineTemplateIds: Array.isArray(legacyOnboarding.routineTemplateIds) ? legacyOnboarding.routineTemplateIds.filter((id): id is string => typeof id === 'string') : [],
     appearance: legacyOnboarding.appearance === 'expressive' ? 'expressive' : parsed.visualStyle,
+    wakeTime: isClockTime(legacyOnboarding.wakeTime) ? legacyOnboarding.wakeTime : undefined,
+    sleepTime: isClockTime(legacyOnboarding.sleepTime) ? legacyOnboarding.sleepTime : undefined,
   } as OnboardingProfile : null;
   const taskDefinitions: TaskDefinition[] = Array.isArray(parsed.taskDefinitions) ? parsed.taskDefinitions.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.scheduledDate === 'string' && (item.recurrenceRule == null || ['daily', 'weekdays', 'weekends', 'selected_days', 'once'].includes(item.recurrenceRule))).map((item) => ({ ...item, recurrenceRule: item.recurrenceRule ?? 'once' as const, priority: item.priority && ['low', 'medium', 'high'].includes(item.priority) ? item.priority : 'medium', subtasks: Array.isArray(item.subtasks) ? item.subtasks.filter((subtask) => subtask && typeof subtask.id === 'string' && typeof subtask.title === 'string' && Number.isInteger(subtask.sortOrder)) : [] })) : migratedEntries.filter((entry) => entry.type === 'task' && entry.sourceType === 'task').map((entry) => ({ id: entry.sourceId ?? entry.id, title: entry.title, scheduledDate: entry.date, recurrenceRule: 'once' as const, goalId: entry.goalId, milestoneId: entry.milestoneId, targetValue: entry.targetValueSnapshot ?? entry.targetValue, targetUnit: entry.targetUnitSnapshot ?? entry.targetUnit, priority: 'medium' as const, subtasks: [], createdAt: entry.createdAt ?? new Date().toISOString() }));
   const habitDefinitions = Array.isArray(parsed.habitDefinitions) ? parsed.habitDefinitions.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.startDate === 'string' && ['daily', 'weekdays', 'weekends', 'selected_days', 'once'].includes(item.recurrenceRule) && typeof item.isPaused === 'boolean' && (item.trackingType == null || ['boolean', 'quantity', 'duration'].includes(item.trackingType))).map((item) => ({ ...item, trackingType: item.trackingType ?? 'boolean' as const })) : migratedEntries.filter((entry) => entry.type === 'habit' && entry.sourceType === 'habit').map((entry) => ({ id: entry.sourceId ?? entry.id, title: entry.title, startDate: entry.date, recurrenceRule: 'once' as const, trackingType: 'boolean' as const, goalId: entry.goalId, milestoneId: entry.milestoneId, isPaused: false, createdAt: entry.createdAt ?? new Date().toISOString() }));
@@ -377,11 +380,15 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
       }
       const unreadable = await getLegacyQuarantine();
       if (unreadable) await saveRecoverySnapshot('fresh-guest', { unreadableSnapshot: unreadable });
+      // Archive the raw stored and backup copies too, so a copy that fails validation is not deleted unarchived.
+      const [rawStored, rawBackup] = await Promise.all([readSnapshot(SESSION_STORAGE_KEY), readSnapshot(SESSION_BACKUP_KEY)]);
+      if (rawStored || rawBackup) await saveRecoverySnapshot('fresh-guest', { rawStored, rawBackup });
       writesPaused = true;
       await clearLocalStorage({ preserveRecovery: true });
       writesBlocked.current = false;
       lastAttempt.current = '';
-      const fresh = { ...initialState(), onboardingCompleted: true };
+      // A fresh workspace starts at onboarding again, so the next launch shows setup instead of an empty Today.
+      const fresh = initialState();
       sessionSnapshot = fresh; setSession(fresh); setRetryToken((current) => current + 1);
       writesPaused = false;
       return true;
@@ -437,7 +444,7 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
           </SquircleView>
         ) : children : null}
         {!initialBootComplete && <AnimatedSplash
-          readyToAnimate={startupAssetsReady && hydrated && splashTargetDecision !== 'pending'}
+          readyToAnimate={startupAssetsReady && hydrated}
           readyToTransition={splashTransitionReady}
           target={splashTarget}
           onRevealComplete={onSplashRevealComplete}

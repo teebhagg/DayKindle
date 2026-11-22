@@ -1,6 +1,6 @@
 # Onboarding and profile — current state
 
-**Reviewed:** 2026-11-13
+**Reviewed:** 2026-11-21
 **Status:** Source-reviewed in the current working tree, which includes uncommitted changes. No onboarding run, fresh install, or Profile action was exercised on a device in this pass.
 **Evidence labels:** **Verified** (read in source), **Inferred** (reasoned from source, not measured), **Needs Validation** (needs a device, deployment, or provider check), **Not found** (absent from the reviewed source).
 
@@ -23,7 +23,7 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 | 3. Appearance | "Choose a look for DayKindle, or keep the refined default." Refined (`formal`) or Expressive | **Verified** | `visualStyle` state; preview card "Your day, in focus." |
 | 4. Optional routine | "Would a simple rhythm help?" — the Daily Plan from the server catalog, or "No routine for now" | **Verified** | `routineTemplateId`; `useDailyPlanTemplates()`. |
 | Finish | "Start my day" seeds the session, waits for the local save, sends `onboarding_completed`, opens Today with "Your planner is ready" | **Verified** | `next()` at step 4 → `seedHomeSession()` → `confirmLocalSave()`. |
-| Skip | "Skip account setup and start as a guest" starts a fresh guest workspace (earlier data archived) | **Verified** | `skipAccountSetup()` → `startFreshGuestData()`. |
+| Skip (removed) | The duplicate "Use Guest" skip on the account screen was removed. "Continue as Guest" is the only guest path and continues into setup. Account screen has a back button to the intro. | **Verified** (source, 2026-11-21; not run on a device) | `welcome-auth-screen.tsx`, `index.tsx`. Planned: none. |
 
 **Profile tab (Verified, `home-screen.tsx` profile section):**
 
@@ -42,7 +42,7 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 
 - **Routes:** `app/index.tsx` (welcome, onboarding, `/auth` and link modes); redirects to `/(tabs)` once `onboardingCompleted` is true. Profile tab: `app/(tabs)/profile*.tsx` → `HomeScreen`.
 - **Components:** `welcome-auth-screen.tsx`, `guest-workspace-sign-in-tray.tsx`, `sync-consent-dialog.tsx`, `profile-identity.tsx`, `apple-auth-button.tsx`, `animated-splash.tsx`.
-- **State:** `OnboardingProfile` in `home-session.tsx`: `accountType`, sync consent fields, `routineTemplateIds`, `appearance`, `areas`, `customAreaName`. Type-only fields with no reader or writer: `accountabilityStyle`, `accountabilityEnabled`, `wakeTime`, `sleepTime`, `focusWindow` (**Verified**). Unused `focusWindow*` styles remain in `app/index.tsx`.
+- **State:** `OnboardingProfile` in `home-session.tsx`: `accountType`, sync consent fields, `routineTemplateIds`, `appearance`, `areas`, `customAreaName`. Type-only fields with no reader or writer: `accountabilityStyle`, `accountabilityEnabled`, `focusWindow` (**Verified**). `wakeTime` and `sleepTime` are set in Profile and read by check-in reminders. Unused `focusWindow*` styles remain in `app/index.tsx`.
 - **Persistence:** onboarding and `visualStyle` are stored in the SQLite `session_settings` row; life areas in `life_areas`; starter goal in `goals`; routine in `day_schedules`. Synced as `settings`, `lifeAreas`, `plans`, `daySchedules` when sync is on.
 - **Analytics:** `onboarding_completed` with `account_type`, `starter_plan_count`, `has_routine`. Screen names `welcome`, `home`, `goals`, `progress`, `profile`, `history` only (`PostHogScreenTracker` in `app/_layout.tsx`).
 
@@ -51,12 +51,13 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 - **Nothing is required (Verified):** areas, starter goal, look and routine can all be skipped. "Choose an area above to see a matching goal. You can also skip both."
 - **One starter goal (Verified):** selecting a second replaces the first. The goal keeps the template id as its `id`, its "first step" text, and its area.
 - **Seeding (Verified):** `seedHomeSession()` replaces entries, definitions and progress events with empty lists, builds all 15 life areas with the chosen ones enabled, and sets `selectedDate` to today.
-- **Consent (Verified):** stored only with the current user's id; Guest and skip paths clear it.
+- **Consent (Verified):** stored only with the current user's id; the Guest path clears it.
+- **Fresh workspace (Verified):** `startFreshGuestData()` now resets to a clean planner with onboarding not completed, so the next launch shows setup. It is used by the "Start fresh on this device" recovery action, which archives earlier data first.
 - **Returning account (Verified):** found when a non-deleted `settings/onboardingCompleted` row is `true`, a `settings/onboarding` object exists, or a legacy snapshot row exists. Existing consent is kept only if it belongs to the same user.
 
 ## 6. Loading, empty, success, error and offline states
 
-- **Loading:** the splash waits for fonts, session hydration and the logo target (with a 250 ms fallback). **Verified.**
+- **Loading:** the splash's logo reveal starts once fonts and session hydration are ready; it no longer waits for the welcome route or the logo target. The logo target decision gates only the flight to the destination, at transition time. Source-verified in `animated-splash.tsx` and `home-session.tsx`; native startup timing is **Needs Validation**.
 - **Success:** "Your planner is ready — Saved on this device." **Verified.**
 - **Error:** "Could not save your setup. Keep the app open and try again."; "Sign-in could not finish — Retry, or continue as a guest."; "Could not check your saved setup — Retry before starting onboarding."; "Could not switch to a guest workspace". **Verified.**
 - **Offline:** Guest onboarding works offline; the routine step uses the cached or bundled Daily Plan. The returning-account check needs the network. **Verified / Inferred.**
@@ -76,7 +77,7 @@ Planner session (`seedHomeSession`, `confirmLocalSave`), `AccountProvider`, Dail
 
 ## 9. Defects and failure modes
 
-- **Verified:** dead model fields (`accountabilityStyle`, `wakeTime`, `sleepTime`, `focusWindow`) and leftover styles suggest removed onboarding steps; they are synced as part of `onboarding` if present in old data.
+- **Verified:** dead model fields (`accountabilityStyle`, `focusWindow`, `accountabilityEnabled`) and leftover styles suggest removed onboarding steps; they are synced as part of `onboarding` if present in old data. `wakeTime` and `sleepTime` are no longer dead: they are set in Profile (Daily check-ins) and drive two daily reminders (updated 2026-11-21, **Needs Validation** on device). Onboarding does not collect them.
 - **Needs Validation:** returning from the Google or Apple sheet, cancelling it, and fresh-install behavior on both platforms.
 - **Needs Validation:** web onboarding; the full-scale audit found web planner routes blank because Skia web is not initialized (TD-15).
 - **Inferred:** if the returning-account check fails offline, the user is held with an error until retry; there is no "continue on this device" escape on that toast.
@@ -92,7 +93,7 @@ Planner session (`seedHomeSession`, `confirmLocalSave`), `AccountProvider`, Dail
 
 - Name editing in Profile for signed-in users.
 - More than one routine choice, including a neutral (non-faith) default.
-- Optional wake and sleep times (the fields exist in the type) — only if they will change behavior (PRD §11 says not to ask otherwise).
+- Wake and sleep times are set in Profile, not onboarding, because they now change behavior (reminders) and PRD §11 says not to ask in onboarding otherwise. Onboarding entry remains unbuilt (updated 2026-11-21).
 - A short "how DayKindle handles your data" panel reachable from Profile.
 - Onboarding funnel measurement by step (only completion is measured).
 

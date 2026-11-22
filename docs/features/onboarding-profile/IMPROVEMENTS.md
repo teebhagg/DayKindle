@@ -1,6 +1,6 @@
 # Onboarding and profile — improvements
 
-**Reviewed:** 2026-11-13
+**Reviewed:** 2026-11-21
 **Status:** Proposals. Nothing here is implemented. The [implementation plan](IMPLEMENTATION_PLAN.md) orders the selected items.
 **Evidence basis:** [current state](CURRENT_STATE.md) and the source paths it lists.
 
@@ -11,7 +11,7 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 ### A1. Verify onboarding on real devices — P1, M
 
 - **Evidence:** **Needs Validation** — no fresh install, provider sheet return or cancel, or returning-account run has been recorded (full-scale audit, open item 6).
-- **Approach:** scripted manual run on iOS and Android for Guest, Google, Apple, cancel at each sheet, returning account, offline Guest, and "Skip account setup". Record device, OS and build in `docs/audits/`.
+- **Approach:** scripted manual run on iOS and Android for Guest, Google, Apple, cancel at each sheet, returning account, offline Guest, and "Start fresh on this device" from the recovery screen. Record device, OS and build in `docs/audits/`.
 
 ### A2. Give the returning-account check an offline escape — P2, S
 
@@ -21,8 +21,8 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 
 ### A3. Remove dead onboarding fields — P3, S
 
-- **Evidence:** **Verified** — `accountabilityStyle`, `accountabilityEnabled`, `wakeTime`, `sleepTime`, `focusWindow` have no reader or writer; `focusWindow*` styles are unused.
-- **Approach:** drop `wakeTime`, `sleepTime`, `focusWindow` and the styles. Keep `accountabilityStyle` only if the [accountability plan](../accountability/IMPLEMENTATION_PLAN.md) Stage A intensity setting is approved; then rename it there. Normalization deletes unknown fields as it already does for legacy reminder fields.
+- **Evidence:** **Verified** — `accountabilityStyle`, `accountabilityEnabled`, `focusWindow` have no reader or writer; `focusWindow*` styles are unused. `wakeTime` and `sleepTime` are no longer dead: Profile sets them and check-in reminders read them.
+- **Approach:** drop `focusWindow` and the styles. Keep `wakeTime` and `sleepTime`. Keep `accountabilityStyle` only if the [accountability plan](../accountability/IMPLEMENTATION_PLAN.md) Stage A intensity setting is approved; then rename it there. Normalization deletes unknown fields as it already does for legacy reminder fields.
 
 ## B. Refine existing capabilities
 
@@ -55,6 +55,8 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 - **Dashboard:** a funnel card using only these events (see [analytics and dashboard](../analytics-and-dashboard/IMPLEMENTATION_PLAN.md)).
 
 ### C2. Optional wake and sleep times — P3, M
+
+- **Status (2026-11-21):** implemented in Profile as daily check-in reminders; not in onboarding. Needs device validation of scheduled notifications.
 
 - **Only if** they change behavior: default reminder times, routine block times, or the "day" boundary for late-night users. Otherwise do not ask (PRD §11).
 

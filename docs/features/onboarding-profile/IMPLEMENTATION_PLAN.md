@@ -27,7 +27,7 @@
 
 ### OP1 — Device verification
 
-- **Script:** fresh install → intro → Guest → areas (2) → starter goal → Expressive → routine → Today. Repeat with Google (Android, iOS), Apple (iOS), cancel at each provider sheet, offline Guest, returning account with saved setup, and "Skip account setup" with existing data (check the archive is restorable from Profile).
+- **Script:** fresh install → intro → Guest → areas (2) → starter goal → Expressive → routine → Today. Repeat with Google (Android, iOS), Apple (iOS), cancel at each provider sheet, offline Guest, returning account with saved setup, and "Start fresh on this device" from the unreadable-data recovery screen with existing data (check the archive is restorable from Profile). Updated 2026-11-21: the account-screen "Use Guest" skip no longer exists, so it is not part of this script.
 - **Accessibility:** the same path with VoiceOver and TalkBack, large text (200%), and reduced motion.
 - **Output:** `docs/audits/ONBOARDING_DEVICE_RUN_<date>.md` with device, OS, build, and pass/fail per row.
 

@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo } from 'react';
-import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
+import { Canvas, Group, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { StyleSheet, View } from 'react-native';
 
@@ -29,24 +29,27 @@ function AnimatedCheckbox({ checked, color, size = 28, reduceMotion = false }: A
       style={{ width: size, height: size }}
     >
       <Canvas style={StyleSheet.absoluteFill}>
-        <RoundedRect
-          rect={Skia.RRectXY(Skia.XYWHRect(4.5, 4.5, 23, 23), 7, 7)}
-          color={color}
-          style="stroke"
-          strokeWidth={1.7}
-        />
-        {tickPath ? (
-          <Path
-            path={tickPath}
+        {/* The artwork is drawn on a 28-unit grid; scale it to the requested size so the outline is not clipped at the edge. */}
+        <Group transform={[{ scale: size / 28 }]}>
+          <RoundedRect
+            rect={Skia.RRectXY(Skia.XYWHRect(4.5, 4.5, 23, 23), 7, 7)}
             color={color}
             style="stroke"
-            strokeWidth={2.6}
-            strokeCap="round"
-            strokeJoin="round"
-            start={0}
-            end={progress}
+            strokeWidth={1.7}
           />
-        ) : null}
+          {tickPath ? (
+            <Path
+              path={tickPath}
+              color={color}
+              style="stroke"
+              strokeWidth={2.6}
+              strokeCap="round"
+              strokeJoin="round"
+              start={0}
+              end={progress}
+            />
+          ) : null}
+        </Group>
       </Canvas>
     </View>
   );

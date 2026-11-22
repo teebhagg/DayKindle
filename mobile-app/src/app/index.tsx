@@ -1,9 +1,9 @@
-import { SquircleSurface } from '@/components/squircle-surface';
+import { LogoSquircle } from '@/components/logo-squircle';
 import { SquircleCard, SquirclePressable, type SquirclePressableProps, SquircleView, AnimatedSquircleView } from '@/components/squircle-card';
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, Radius, SplashLogoCornerRadiusRatio, type AppTheme } from '@/constants/theme';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { Redirect, router, useLocalSearchParams, usePathname } from 'expo-router';
 import { posthog } from '../lib/posthog';
 import { useCallback, useContext, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
@@ -120,6 +120,14 @@ function IntroFadeWord({
 }) {
     const styles = useThemedStyles(createStyles);
   const progress = useSharedValue(0);
+  // The frosted overlay is only needed while the word fades in; drop it afterwards so the copy stays sharp.
+  const [settled, setSettled] = useState(reduceMotion);
+  useEffect(() => {
+    if (reduceMotion) { setSettled(true); return; }
+    setSettled(false);
+    const timer = setTimeout(() => setSettled(true), delay + introFadeDuration + 40);
+    return () => clearTimeout(timer);
+  }, [delay, reduceMotion]);
 
   useEffect(() => {
     progress.set(withDelay(
@@ -144,14 +152,15 @@ function IntroFadeWord({
       : interpolate(progress.value, [0, 0.45, 1], [8, 3, 0], Extrapolation.CLAMP),
   }));
   return (
-    <AnimatedSquircleView pointerEvents="none" style={[styles.introFadeWord, wordStyle]}>
+    // Plain animated view: a squircle surface here wrapped the word in a MaskedView, which pushed the copy off-screen on iOS.
+    <Animated.View pointerEvents="none" style={[styles.introFadeWord, wordStyle]}>
       <Text display={display} style={textStyle}>{word}{' '}</Text>
-      <AnimatedBlurView
+      {!settled && <AnimatedBlurView
         tint="extraLight"
         style={StyleSheet.absoluteFill}
         animatedProps={blurProps}
-      />
-    </AnimatedSquircleView>
+      />}
+    </Animated.View>
   );
 }
 
@@ -244,7 +253,7 @@ const introSlides = [
   {
     eyebrow: 'REVIEW YOUR ACTIVITY',
     title: 'See what you did.',
-    body: 'Record completed actions in Today. Review your activity in Progress and History.',
+    body: 'Record completed actions in Today. Review your activity in Progress.',
     icon: 'check',
     cardTitle: 'Keep your plan flexible',
     cardBody: 'Missed a day? Adjust your next step and continue.',
@@ -272,7 +281,7 @@ export default function OnboardingScreen() {
   const isAuthMode = params.mode === 'auth' || params.mode === 'welcome' || pathname === '/auth';
   const planner = useHomeSession();
   const dayScheduleTemplates = useDailyPlanTemplates();
-  const { onboardingCompleted, onboarding, setOnboarding, setOnboardingCompleted, startFreshGuestData } = planner;
+  const { onboardingCompleted, onboarding, setOnboarding, setOnboardingCompleted } = planner;
   const account = useAccount();
   const accountUserId = account.user?.id;
   const accountUserProvider = account.user?.app_metadata.provider;
@@ -285,6 +294,8 @@ export default function OnboardingScreen() {
   const [customAreaName, setCustomAreaName] = useState('');
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [visualStyle, setVisualStyle] = useState<VisualStyle | null>(null);
+  // Refined is the default look, so it must show as selected until the user picks another.
+  const selectedLook: VisualStyle = visualStyle ?? 'formal';
   const [routineTemplateId, setRoutineTemplateId] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<AccountType>('guest');
   const [syncConsent, setSyncConsent] = useState(false);
@@ -362,15 +373,16 @@ export default function OnboardingScreen() {
     return () => { active = false; };
   }, [hasSavedCloudOnboarding, accountUserId, accountUserProvider, cloudCheckAttempt, isAuthMode, isLinkMode, shouldCheckInitialCloudOnboarding]);
   const toggleArea = (id: string) => {
+    const deselecting = selectedAreas.includes(id);
     setSelectedAreas((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );
+    if (deselecting) {
+      setSelectedPlans((current) => current.filter((planId) => starterPlans.find((plan) => plan.id === planId)?.area !== id));
+    }
   };
-  const togglePlan = (id: string) => {
-    setSelectedPlans((current) => current.includes(id)
-      ? []
-      : [id]);
-  };
+  // Radio behaviour: picking a goal replaces the previous one; deselecting an area drops its goal.
+  const selectPlan = (id: string) => setSelectedPlans([id]);
   const getOnboardingProfile = (): OnboardingProfile => ({
     accountType,
     syncConsent,
@@ -461,7 +473,8 @@ export default function OnboardingScreen() {
       return;
     }
     if (step === 4) {
-      const selectedStarterPlans = starterPlans.filter((plan) => selectedPlans.includes(plan.id)).map((plan) => ({
+      // Only goals whose life area is still selected are saved, so nothing hidden on screen gets created.
+      const selectedStarterPlans = starterPlans.filter((plan) => selectedPlans.includes(plan.id) && selectedAreas.includes(plan.area)).map((plan) => ({
         id: plan.id,
         title: plan.title,
         description: plan.detail,
@@ -470,6 +483,7 @@ export default function OnboardingScreen() {
       }));
       const selectedSchedules = dayScheduleTemplates.filter((schedule) => schedule.id === routineTemplateId);
       setFinishingSetup(true);
+      setSetupError('');
       seedHomeSession(visualStyle ?? 'formal', selectedStarterPlans, getOnboardingProfile(), selectedSchedules);
       try {
         if (planner.storageStatus === 'save-error') planner.retrySave();
@@ -483,24 +497,6 @@ export default function OnboardingScreen() {
     }
     setStep((current) => Math.min(current + 1, 4) as Step);
   };
-  const skipAccountSetup = async () => {
-    if (isLinkMode) { router.replace('/(tabs)'); return; }
-    setAccountSkipBusy(true);
-    try {
-      await account.signOutToGuest();
-      if (onboardingCompleted) {
-        setOnboarding((current) => current ? { ...current, accountType: 'guest', syncConsent: false, syncConsentAt: null, syncConsentUserId: null } : null);
-        router.replace('/(tabs)');
-      } else if (await startFreshGuestData()) router.replace('/(tabs)');
-      else toast.error('Could not prepare a fresh guest workspace', { description: 'Try again or restore your saved data.' });
-    } catch {
-      toast.error('Could not switch to a fresh guest workspace', {
-        description: 'Try again in a moment.',
-      });
-    } finally {
-      setAccountSkipBusy(false);
-    }
-  };
   const back = () => {
     if (step === 0 && introStep > 0) {
       if (introStep === 1) return;
@@ -509,16 +505,12 @@ export default function OnboardingScreen() {
     }
     setStep((current) => Math.max(current - 1, 0) as Step);
   };
-  const goToStart = () => {
-    if (isLinkMode) { router.back(); return; }
-    setStep(0);
-    setIntroStep(0);
-  };
   const showingIntro = step === 0 && introStep > 0;
   const showingWelcome = step === 0 && introStep === 0;
   const canFlySplashLogo = showingWelcome && !shouldHoldForInitialCloudCheck && !onboardingCompleted && !isLinkMode && !isAuthMode;
   const showingAccountChoice = step === 1;
-  const footerStep = showingIntro && introStep === introSlides.length ? 0 : step;
+  // Only the welcome screen says "Let's begin"; every intro slide and step after it says "Continue" (except the last step).
+  const footerStep = showingWelcome ? 0 : showingIntro ? 1 : step;
   useEffect(() => {
     if (!canFlySplashLogo) reportNoSplashTarget();
   }, [canFlySplashLogo, reportNoSplashTarget]);
@@ -581,9 +573,9 @@ export default function OnboardingScreen() {
         <SquircleView style={[styles.welcome, { paddingTop: insets.top + 56 }]}>
           <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 100 : 220).delay(40)} style={styles.sunMark}>
             <SquircleView ref={sunLogoTargetRef} collapsable={false} onLayout={measureSplashLogoTarget} style={styles.sunLogoTarget}>
-              <SquircleSurface style={styles.sunLogoSquircle} radius={SPLASH_LOGO_TARGET_SIZE * SplashLogoCornerRadiusRatio}>
+              <LogoSquircle size={SPLASH_LOGO_TARGET_SIZE} style={styles.sunLogoSquircle}>
                 <Image source={DAYKINDLE_LOGO} resizeMode="cover" style={styles.sunLogoImage} accessible={false} />
-              </SquircleSurface>
+              </LogoSquircle>
             </SquircleView>
           </AnimatedSquircleView>
           <Text style={styles.eyebrow}>A LITTLE MORE INTENTION, EVERY DAY</Text>
@@ -660,12 +652,15 @@ export default function OnboardingScreen() {
       {showingAccountChoice && !isLinkMode && <WelcomeAuthScreen
         accountConfigured={account.configured}
         busy={account.signingIn || accountSkipBusy}
-        skipBusy={accountSkipBusy}
         onApple={() => void handleProviderSignIn('apple')}
         onGoogle={() => void handleProviderSignIn('google')}
         onGuest={() => void continueAsGuest()}
-        onSkip={() => void skipAccountSetup()}
       />}
+      {showingAccountChoice && !isLinkMode && <AnimatedSquircleView entering={reduceMotion ? FadeIn.duration(80) : FadeIn.duration(200)} style={[styles.accountBackPosition, { top: insets.top + 10 }]}>
+        <SquirclePressable onPress={back} accessibilityRole="button" accessibilityLabel="Go back to the introduction" style={styles.accountBackButton}>
+          <AppIcon name="back" size={20} color={ink} />
+        </SquirclePressable>
+      </AnimatedSquircleView>}
 
       {showingAccountChoice && isLinkMode && <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, styles.introContent, { minHeight: windowHeight, paddingTop: insets.top + 100, paddingBottom: insets.bottom + 116 }]} showsVerticalScrollIndicator={false}>
         <AnimatedSquircleView entering={reduceMotion ? FadeIn.duration(80) : FadeInUp.duration(400).delay(30)} style={styles.accountIllustration}><SquircleView style={styles.accountIllustrationRing} /><SquircleView style={styles.accountIllustrationIcon}><AppIcon name="cloud" size={32} color={green} /></SquircleView><SquircleView style={styles.localBadge}><AppIcon name="check" size={15} color={green} /></SquircleView></AnimatedSquircleView>
@@ -723,7 +718,7 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionLabel}>ONE STARTER GOAL · OPTIONAL</Text>
             {starterPlans.filter((plan) => selectedAreas.includes(plan.area)).map((plan) => {
               const selected = selectedPlans.includes(plan.id);
-              return <SquirclePressable key={plan.id} onPress={() => togglePlan(plan.id)} style={[styles.starterGoalChoice, selected && styles.starterGoalChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
+              return <SquirclePressable key={plan.id} onPress={() => selectPlan(plan.id)} style={[styles.starterGoalChoice, selected && styles.starterGoalChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected }}>
                 <SquircleView style={styles.starterGoalTop}><AppIcon name={plan.icon} size={19} color={green} /><Text style={styles.starterGoalTitle}>{plan.title}</Text><SquircleView style={[styles.radioOuter, selected && styles.radioOuterSelected]}>{selected && <SquircleView style={styles.radioDot} />}</SquircleView></SquircleView>
                 <Text style={styles.starterGoalDetail}>{plan.detail}</Text><Text style={styles.starterGoalFirstStep}>First step · {plan.firstStep}</Text>
               </SquirclePressable>;
@@ -738,9 +733,9 @@ export default function OnboardingScreen() {
           <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
             <Text style={styles.eyebrow}>MAKE IT YOURS</Text>
             <Text display style={styles.heading}>Choose your{ '\n' }appearance style.</Text>
-            <Text style={styles.body}>Choose a look for DayKindle, or keep the refined default. You can change this later in Appearance.</Text>
+            <Text style={styles.body}>Choose a look for DayKindle, or keep the refined default.</Text>
             <SquircleView style={styles.visualOptions}>
-              <MotionPressable onPress={() => setVisualStyle('formal')} style={[styles.visualCard, visualStyle === 'formal' && styles.visualCardSelected]} accessibilityRole="radio" accessibilityState={{ selected: visualStyle === 'formal' }}>
+              <MotionPressable onPress={() => setVisualStyle('formal')} style={[styles.visualCard, selectedLook === 'formal' && styles.visualCardSelected]} accessibilityRole="radio" accessibilityState={{ selected: selectedLook === 'formal' }}>
                 <SquircleCard style={styles.previewFormal}>
                   <Text heading style={styles.previewFormalHeading}>Your day, in focus.</Text>
                   <SquircleView style={styles.previewIconRow}>
@@ -752,7 +747,7 @@ export default function OnboardingScreen() {
                 </SquircleCard>
                 <SquircleView style={styles.visualCardFooter}>
                   <SquircleView style={styles.visualTitleWrap}><Text style={styles.visualTitle}>Refined</Text><Text style={styles.visualSubtitle}>Clean & focused</Text></SquircleView>
-                  <SquircleView style={styles.radioOuter}>{visualStyle === 'formal' && <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 70 : 130)} exiting={FadeOut.duration(reduceMotion ? 50 : 100)} style={styles.radioDot} />}</SquircleView>
+                  <SquircleView style={[styles.radioOuter, selectedLook === 'formal' && styles.radioOuterSelected]}>{selectedLook === 'formal' && <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 70 : 130)} exiting={FadeOut.duration(reduceMotion ? 50 : 100)} style={styles.radioDot} />}</SquircleView>
                 </SquircleView>
                 <Text style={styles.fontPair}>Satoshi + Hugeicons</Text>
               </MotionPressable>
@@ -773,7 +768,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.fontPair}>Delicious Handrawn + Doodles</Text>
               </MotionPressable>
             </SquircleView>
-            <Text style={styles.selectedHint}>{visualStyle ? 'You can change this later in Appearance.' : 'Refined is selected by default.'}</Text>
+            <Text style={styles.selectedHint}>{visualStyle ? 'You can change this later in Appearance.' : 'Refined is selected by default. You can change this later in Appearance.'}</Text>
           </Animated.ScrollView>
         </>
       )}
@@ -782,7 +777,7 @@ export default function OnboardingScreen() {
         <Animated.ScrollView onScroll={onContentScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { minHeight: windowHeight, paddingTop: insets.top + 90, paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
           <Text style={styles.eyebrow}>OPTIONAL ROUTINE</Text>
           <Text display style={styles.heading}>Would a simple rhythm help?</Text>
-          <Text style={styles.body}>Use the same time-blocked plan every day, and edit any block later in Templates.</Text>
+          <Text style={styles.body}>Add a time-blocked daily plan. You can change its blocks and days later in Templates.</Text>
           <SquirclePressable onPress={() => setRoutineTemplateId(null)} style={[styles.routineChoice, routineTemplateId === null && styles.routineChoiceSelected]} accessibilityRole="radio" accessibilityState={{ selected: routineTemplateId === null }}>
             <SquircleView style={styles.routineChoiceIcon}><AppIcon name="sparkle" size={19} color={green} /></SquircleView><SquircleView style={styles.routineChoiceCopy}><Text style={styles.routineChoiceTitle}>No routine for now</Text><Text style={styles.routineChoiceDetail}>You can add one whenever you are ready.</Text></SquircleView><SquircleView style={[styles.radioOuter, routineTemplateId === null && styles.radioOuterSelected]}>{routineTemplateId === null && <SquircleView style={styles.radioDot} />}</SquircleView>
           </SquirclePressable>
@@ -800,16 +795,8 @@ export default function OnboardingScreen() {
         <SquircleView style={[styles.headerBlur, styles.solidHeader, { height: insets.top + APP_NON_TAB_HEADER_HEIGHT }]}>
           <SquircleView style={[styles.topBar, { height: insets.top + APP_NON_TAB_HEADER_HEIGHT, paddingTop: insets.top }]}>
             <SquircleView style={styles.headerSide}>
-          {step > 0 || showingIntro ? (
-                <AnimatedSquircleView
-                  entering={reduceMotion ? FadeIn.duration(80) : FadeInLeft.duration(180).easing(Easing.inOut(Easing.ease))}
-                  exiting={reduceMotion ? FadeOut.duration(60) : FadeOutLeft.duration(140).easing(Easing.inOut(Easing.ease))}
-                >
-                  <NativeActionButton label="" iosHeaderStyle="back" appearance="plain" tintColor={ink} labelColor={ink} onPress={showingIntro ? back : goToStart} accessibilityLabel={showingIntro ? 'Go to previous introduction screen' : 'Return to welcome screen'} style={styles.backButton}>
-                    <AppIcon name="back" size={20} color={ink} />
-                  </NativeActionButton>
-                </AnimatedSquircleView>
-              ) : <SquircleView style={styles.backPlaceholder} />}
+              {/* Step navigation lives in the footer back button; the header keeps its width for the wordmark. */}
+              <SquircleView style={styles.backPlaceholder} />
             </SquircleView>
             <Text display style={styles.wordmark}>DAYKINDLE <Text display style={styles.wordmarkDot}>·</Text></Text>
             <AnimatedSquircleView
@@ -978,7 +965,9 @@ function PrimaryButton({ label, onPress, disabled = false, reduceMotion = false 
 function StepBackButton({ onPress }: { onPress: () => void }) {
   const palette = useTheme(); const styles = useThemedStyles(createStyles);
   return (
-    <NativeActionButton label="" systemImage="chevron.left" onPress={onPress} appearance="bordered" tintColor={palette.green} accessibilityLabel="Go to previous step" style={styles.stepBackButton} />
+    <SquirclePressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Go to previous step" style={styles.stepBackButton}>
+      <AppIcon name="back" size={22} color={palette.green} />
+    </SquirclePressable>
   );
 }
 
@@ -1071,6 +1060,8 @@ const createStyles = (palette: AppTheme) => {  const { ink, muted, green, paper,
   introCopy: { width: '100%' },
   introFadeLine: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   introFadeWord: { position: 'relative', overflow: 'hidden', borderRadius: 3 },
+  accountBackPosition: { position: 'absolute', left: 22, zIndex: 20 },
+  accountBackButton: { width: 44, height: 44, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.surface },
   introEyebrowLine: { justifyContent: 'center', marginBottom: 17 },
   introBodyLine: { maxWidth: 330, marginTop: 12 },
   introOrbit: { position: 'absolute', width: 108, height: 108 },
