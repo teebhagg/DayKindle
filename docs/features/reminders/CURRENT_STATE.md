@@ -27,7 +27,8 @@ Anyone who wants a nudge at a set time. Expected outcome: create a one-time or d
 | Edit a reminder | **Not found** | Remove and recreate. |
 | Weekly or selected-day repeats | **Not found** | Only `once` and `daily`. |
 | Reminders tied to a task, habit, routine block, or check-in | **Not found** | Reminders are free-standing. |
-| Open the reminder screen from a notification tap | **Source configured; Needs Validation** | Tapping an app-owned reminder routes to Profile. Action buttons open the app so their response can be applied and saved. |
+| Open the reminder screen from a notification tap | **Source configured; Needs Validation** | Tapping an app-owned reminder routes to Profile. Tapping a check-in reminder (`checkInPeriod` set) opens Today with the matching check-in sheet. Action buttons open the app so their response can be applied and saved. |
+| Daily check-in reminders from Profile wake and sleep times | **Source configured; Needs Validation** (updated 2026-11-21) | Profile → Daily check-ins saves `wakeTime` and `sleepTime`. Each creates a daily reminder with a fixed ID (`checkin-morning` at wake time, `checkin-evening` 60 minutes before sleep). Clearing a time removes its reminder. |
 | Apple Live Activity | **Not found** | The app uses scheduled notifications; it does not include an ActivityKit Live Activity or widget extension. |
 | Web | **Not supported** | Returns `unsupported`; copy: "Notifications require the iOS or Android app." |
 | "Check push setup" | **Verified, partial** | `registerPushToken()` obtains an Expo push token on a physical device with a project id and permission. The token is not stored or sent anywhere. Copy: "Server delivery still needs to be connected." |
@@ -45,7 +46,7 @@ Anyone who wants a nudge at a set time. Expected outcome: create a one-time or d
 - **Config:** `expo-notifications` plugin in `app.json` (color `#587A66`, default channel, and bundled reminder WAV). Android reminders use `daykindle-reminders-warm-v1`; the existing default channel remains for push setup.
 
 - **Importance data:** older saved reminders normalize to Normal. Important is stored with the reminder and uses a separate Android channel so the OS can retain each channel's user settings.
-- **Action handling:** the root layout reads notification responses, applies snooze/completion locally, and routes a normal notification tap to Profile.
+- **Action handling:** the root layout reads notification responses, applies snooze/completion locally, and routes a normal notification tap to Profile. A tap on a check-in reminder routes to Today instead (`checkInPeriod` set; `at` param makes repeat taps reopen the sheet). Check-in reminder helpers live in `src/features/home/check-in-reminders.ts`.
 
 ## 5. Business rules, validation and calculations
 

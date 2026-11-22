@@ -77,7 +77,7 @@ Planner session (`seedHomeSession`, `confirmLocalSave`), `AccountProvider`, Dail
 
 ## 9. Defects and failure modes
 
-- **Verified:** dead model fields (`accountabilityStyle`, `wakeTime`, `sleepTime`, `focusWindow`) and leftover styles suggest removed onboarding steps; they are synced as part of `onboarding` if present in old data.
+- **Verified:** dead model fields (`accountabilityStyle`, `focusWindow`, `accountabilityEnabled`) and leftover styles suggest removed onboarding steps; they are synced as part of `onboarding` if present in old data. `wakeTime` and `sleepTime` are no longer dead: they are set in Profile (Daily check-ins) and drive two daily reminders (updated 2026-11-21, **Needs Validation** on device). Onboarding does not collect them.
 - **Needs Validation:** returning from the Google or Apple sheet, cancelling it, and fresh-install behavior on both platforms.
 - **Needs Validation:** web onboarding; the full-scale audit found web planner routes blank because Skia web is not initialized (TD-15).
 - **Inferred:** if the returning-account check fails offline, the user is held with an error until retry; there is no "continue on this device" escape on that toast.
@@ -93,7 +93,7 @@ Planner session (`seedHomeSession`, `confirmLocalSave`), `AccountProvider`, Dail
 
 - Name editing in Profile for signed-in users.
 - More than one routine choice, including a neutral (non-faith) default.
-- Optional wake and sleep times (the fields exist in the type) — only if they will change behavior (PRD §11 says not to ask otherwise).
+- Wake and sleep times are set in Profile, not onboarding, because they now change behavior (reminders) and PRD §11 says not to ask in onboarding otherwise. Onboarding entry remains unbuilt (updated 2026-11-21).
 - A short "how DayKindle handles your data" panel reachable from Profile.
 - Onboarding funnel measurement by step (only completion is measured).
 

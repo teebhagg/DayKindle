@@ -81,7 +81,7 @@ Planner session and storage; daily planning (planned items, linked occurrences);
 - Trends: average mood and energy by week, and their relation to completion (shown only to the person).
 - Edit, close (kept / released / missed), and delete for commitments.
 - A Today entry point for the check-in, optionally time-aware (morning vs evening).
-- Optional check-in reminders (see [reminders](../reminders/CURRENT_STATE.md)).
+- Check-in reminders: built from Profile wake and sleep times (morning and evening, daily), not from a per-day setting. Opening a reminder opens the matching check-in sheet (updated 2026-11-21, see [reminders](../reminders/CURRENT_STATE.md)).
 - A reflection prefill with the week's counts (accountability improvement 6).
 
 ## 12. Proposed improvements

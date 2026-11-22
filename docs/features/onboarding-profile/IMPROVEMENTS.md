@@ -56,6 +56,8 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 
 ### C2. Optional wake and sleep times — P3, M
 
+- **Status (2026-11-21):** implemented in Profile as daily check-in reminders; not in onboarding. Needs device validation of scheduled notifications.
+
 - **Only if** they change behavior: default reminder times, routine block times, or the "day" boundary for late-night users. Otherwise do not ask (PRD §11).
 
 ## Measurement
