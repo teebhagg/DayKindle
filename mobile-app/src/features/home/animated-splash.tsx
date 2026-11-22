@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Canvas, Path, Skia, useFont, type SkPath } from '@shopify/react-native-skia';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Svg, { ClipPath, Defs, G, Image as SvgImage, Path as SvgPath } from 'react-native-svg';
+import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
-import { SplashLogoCornerRadiusRatio } from '@/constants/theme';
-import { SquircleSurface } from '@/components/squircle-surface';
+import { LogoSquircle } from '@/components/logo-squircle';
 import type { SplashTarget } from './splash-transition-context';
 
 const LOGO = require('../../../assets/images/daykindle-logo.png');
-const LOGO_SIZE = 1254;
-const LOGO_CLIP_PATH = createSplashLogoClipPath(LOGO_SIZE, LOGO_SIZE * SplashLogoCornerRadiusRatio);
 const BRAND_GREEN = '#064B37';
 const REVEAL_DURATION = 3200;
 const POST_STROKE_FILL_MS = 300;
@@ -168,24 +164,10 @@ export function AnimatedSplash({ readyToAnimate, readyToTransition, target, onRe
     >
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]} />
       <View style={styles.brandLockup}>
-        <Animated.View style={[styles.logoFrame, {
-          width: logoSize,
-          height: logoSize,
-          borderRadius: logoSize * SplashLogoCornerRadiusRatio,
-          borderCurve: 'continuous',
-        }, logoStyle]}>
-          <SquircleSurface style={styles.logoSquircle} radius={logoSize * SplashLogoCornerRadiusRatio} borderColor="#E8D39D" borderWidth={1.5}>
-            <Svg width="100%" height="100%" viewBox={`0 0 ${LOGO_SIZE} ${LOGO_SIZE}`}>
-              <Defs>
-                <ClipPath id="splashLogoSquircleClip">
-                  <SvgPath d={LOGO_CLIP_PATH} />
-                </ClipPath>
-              </Defs>
-              <G clipPath="url(#splashLogoSquircleClip)">
-                <SvgImage href={LOGO} x={0} y={0} width={LOGO_SIZE} height={LOGO_SIZE} preserveAspectRatio="xMidYMid meet" />
-              </G>
-            </Svg>
-          </SquircleSurface>
+        <Animated.View style={[{ width: logoSize, height: logoSize }, logoStyle]}>
+          <LogoSquircle size={logoSize}>
+            <Image source={LOGO} resizeMode="cover" style={styles.logoImage} accessible={false} />
+          </LogoSquircle>
         </Animated.View>
         <Animated.View style={[styles.wordmarkTrack, { width: wordmarkWidth, height: WORDMARK_HEIGHT }, wordmarkStyle]}>
           {glyphs?.length && totalGlyphLength > 0 ? <Canvas style={styles.wordmarkCanvas}>
@@ -210,23 +192,6 @@ export function AnimatedSplash({ readyToAnimate, readyToTransition, target, onRe
   );
 }
 
-function createSplashLogoClipPath(size: number, radius: number) {
-  const r = Math.min(radius, size / 2);
-  const control = r * 0.42;
-  const far = size - r;
-  return [
-    `M ${r} 0`,
-    `H ${far}`,
-    `C ${far + control} 0 ${size} ${r - control} ${size} ${r}`,
-    `V ${far}`,
-    `C ${size} ${far + control} ${far + control} ${size} ${far} ${size}`,
-    `H ${r}`,
-    `C ${r - control} ${size} 0 ${far + control} 0 ${far}`,
-    `V ${r}`,
-    `C 0 ${r - control} ${r - control} 0 ${r} 0 Z`,
-  ].join(' ');
-}
-
 function WordmarkStroke({ path, length, start, end, progress, reduceMotion }: { path: SkPath; length: number; start: number; end: number; progress: { value: number }; reduceMotion: boolean }) {
   const trimProgress = useDerivedValue(() => {
     if (reduceMotion || length <= 0) return 1;
@@ -240,9 +205,8 @@ const styles = StyleSheet.create({
   container: { ...StyleSheet.absoluteFill, zIndex: 100, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
   backdrop: { backgroundColor: BRAND_GREEN },
   brandLockup: { alignItems: 'center', justifyContent: 'center', gap: 16 },
-  logoFrame: { overflow: 'hidden' },
   // The shared surface clips the logo to the same smooth path on both platforms.
-  logoSquircle: { flex: 1, overflow: 'hidden' },
+  logoImage: { width: '100%', height: '100%' },
   wordmarkTrack: { alignSelf: 'center', overflow: 'hidden' },
   wordmarkCanvas: { width: '100%', height: '100%' },
 });

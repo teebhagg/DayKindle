@@ -1,9 +1,9 @@
-import { SquircleSurface } from '@/components/squircle-surface';
+import { LogoSquircle } from '@/components/logo-squircle';
 import { SquircleCard, SquirclePressable, type SquirclePressableProps, SquircleView, AnimatedSquircleView } from '@/components/squircle-card';
 import { Feedback } from '@/components/app-feedback';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { LayoutSpacing, Radius, SplashLogoCornerRadiusRatio, type AppTheme } from '@/constants/theme';
+import { LayoutSpacing, Radius, type AppTheme } from '@/constants/theme';
 import { Redirect, router, useLocalSearchParams, usePathname } from 'expo-router';
 import { posthog } from '../lib/posthog';
 import { useCallback, useContext, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
@@ -573,9 +573,9 @@ export default function OnboardingScreen() {
         <SquircleView style={[styles.welcome, { paddingTop: insets.top + 56 }]}>
           <AnimatedSquircleView entering={FadeIn.duration(reduceMotion ? 100 : 220).delay(40)} style={styles.sunMark}>
             <SquircleView ref={sunLogoTargetRef} collapsable={false} onLayout={measureSplashLogoTarget} style={styles.sunLogoTarget}>
-              <SquircleSurface style={styles.sunLogoSquircle} radius={SPLASH_LOGO_TARGET_SIZE * SplashLogoCornerRadiusRatio}>
+              <LogoSquircle size={SPLASH_LOGO_TARGET_SIZE} style={styles.sunLogoSquircle}>
                 <Image source={DAYKINDLE_LOGO} resizeMode="cover" style={styles.sunLogoImage} accessible={false} />
-              </SquircleSurface>
+              </LogoSquircle>
             </SquircleView>
           </AnimatedSquircleView>
           <Text style={styles.eyebrow}>A LITTLE MORE INTENTION, EVERY DAY</Text>

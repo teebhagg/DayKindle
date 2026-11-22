@@ -57,7 +57,7 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 
 ## 6. Loading, empty, success, error and offline states
 
-- **Loading:** the splash waits for fonts, session hydration and the logo target (with a 250 ms fallback). **Verified.**
+- **Loading:** the splash's logo reveal starts once fonts and session hydration are ready; it no longer waits for the welcome route or the logo target. The logo target decision gates only the flight to the destination, at transition time. Source-verified in `animated-splash.tsx` and `home-session.tsx`; native startup timing is **Needs Validation**.
 - **Success:** "Your planner is ready — Saved on this device." **Verified.**
 - **Error:** "Could not save your setup. Keep the app open and try again."; "Sign-in could not finish — Retry, or continue as a guest."; "Could not check your saved setup — Retry before starting onboarding."; "Could not switch to a guest workspace". **Verified.**
 - **Offline:** Guest onboarding works offline; the routine step uses the cached or bundled Daily Plan. The returning-account check needs the network. **Verified / Inferred.**

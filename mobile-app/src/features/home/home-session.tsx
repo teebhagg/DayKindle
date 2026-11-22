@@ -441,7 +441,7 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
           </SquircleView>
         ) : children : null}
         {!initialBootComplete && <AnimatedSplash
-          readyToAnimate={startupAssetsReady && hydrated && splashTargetDecision !== 'pending'}
+          readyToAnimate={startupAssetsReady && hydrated}
           readyToTransition={splashTransitionReady}
           target={splashTarget}
           onRevealComplete={onSplashRevealComplete}
