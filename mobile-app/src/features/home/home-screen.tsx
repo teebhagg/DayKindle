@@ -807,6 +807,13 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true, ch
   };
   const [wakeTimeDraft, setWakeTimeDraft] = useState(onboarding?.wakeTime ?? '');
   const [sleepTimeDraft, setSleepTimeDraft] = useState(onboarding?.sleepTime ?? '');
+  // Saved times can change outside this screen (cloud sync, archive restore). Follow them unless the draft has an unsaved edit.
+  const savedWakeTime = onboarding?.wakeTime ?? '';
+  const savedSleepTime = onboarding?.sleepTime ?? '';
+  const [syncedWakeTime, setSyncedWakeTime] = useState(savedWakeTime);
+  const [syncedSleepTime, setSyncedSleepTime] = useState(savedSleepTime);
+  if (savedWakeTime !== syncedWakeTime) { if (wakeTimeDraft === syncedWakeTime) setWakeTimeDraft(savedWakeTime); setSyncedWakeTime(savedWakeTime); }
+  if (savedSleepTime !== syncedSleepTime) { if (sleepTimeDraft === syncedSleepTime) setSleepTimeDraft(savedSleepTime); setSyncedSleepTime(savedSleepTime); }
   const saveCheckInTimes = async () => {
     if (savingReminder) return;
     const wakeTime = wakeTimeDraft.trim();
