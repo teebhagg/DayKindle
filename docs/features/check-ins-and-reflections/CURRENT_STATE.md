@@ -26,6 +26,7 @@ People who want to notice patterns in energy, mood and follow-through, and peopl
 | Create a commitment: title, target, deadline (required); linked actions count, timeframe, why, reward, "Accountability rule (optional)", goal, linked task or habit | **Verified** | Commitments section on the **Goals** tab (`createCommitment()`). |
 | Commitment progress | **Verified** | "N of M linked actions · R remaining · P%" from completed linked occurrences between creation and deadline (`commitmentMetrics`). |
 | Edit, close, or delete a commitment | **Not found** | `setCommitments` is only called to add. |
+| Check-in reminders from Profile wake and sleep times (daily, morning and evening) | **Source configured; Needs Validation** (updated 2026-11-21) | Opening a reminder opens the matching check-in sheet. See [reminders](../reminders/CURRENT_STATE.md). |
 
 Requirement-level status of commitments and recovery is in [accountability](../accountability/CURRENT_STATE.md).
 
@@ -81,7 +82,6 @@ Planner session and storage; daily planning (planned items, linked occurrences);
 - Trends: average mood and energy by week, and their relation to completion (shown only to the person).
 - Edit, close (kept / released / missed), and delete for commitments.
 - A Today entry point for the check-in, optionally time-aware (morning vs evening).
-- Check-in reminders: built from Profile wake and sleep times (morning and evening, daily), not from a per-day setting. Opening a reminder opens the matching check-in sheet (updated 2026-11-21, see [reminders](../reminders/CURRENT_STATE.md)).
 - A reflection prefill with the week's counts (accountability improvement 6).
 
 ## 12. Proposed improvements

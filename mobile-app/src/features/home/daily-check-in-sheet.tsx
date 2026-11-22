@@ -81,6 +81,9 @@ export default function DailyCheckInSheet({ date, onClose, initialPeriod }: Dail
   const savedCheckIn = checkIns.find((item) => item.date === date);
   const plannedEntries = entries.filter((entry) => entry.date === date && entry.type !== 'goal');
   const [period, setPeriod] = useState<CheckInPeriod>(initialPeriod ?? (savedCheckIn?.morning ? 'morning' : savedCheckIn?.evening ? 'evening' : 'morning'));
+  // A reminder for the other period can arrive while the sheet is open: switch to it, keeping drafts.
+  const [requestedPeriod, setRequestedPeriod] = useState(initialPeriod);
+  if (initialPeriod !== requestedPeriod) { setRequestedPeriod(initialPeriod); if (initialPeriod) setPeriod(initialPeriod); }
   const [morningMood, setMorningMood] = useState(savedCheckIn?.morning?.mood ?? 3);
   const [morningEnergy, setMorningEnergy] = useState(savedCheckIn?.morning?.energy ?? 3);
   const [morningSleep, setMorningSleep] = useState(savedCheckIn?.morning?.sleepQuality ?? 3);

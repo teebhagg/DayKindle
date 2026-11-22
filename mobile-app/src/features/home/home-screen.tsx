@@ -817,7 +817,10 @@ export default function HomeScreen({ initialTab = 'today', showTabBar = true, ch
     const checkInReminders = buildCheckInReminders({ wakeTime: wakeTime || undefined, sleepTime: sleepTime || undefined });
     const result = await applyNotificationReminders(replaceCheckInReminders(reminders, checkInReminders), true);
     setSavingReminder(false);
-    if (result !== 'failed') toast.success('Check-in times saved', { description: checkInReminders.length ? 'Check-in reminders are set on this device.' : 'Check-in reminders removed.' });
+    if (result === 'failed') return;
+    if (!checkInReminders.length) toast.success('Check-in reminders removed', { description: 'Saved on this device.' });
+    else if (result === 'scheduled') toast.success('Check-in times saved', { description: 'Check-in reminders are set on this device.' });
+    else toast.warning('Check-in times saved', { description: 'Allow notifications in device settings to receive check-in reminders.' });
   };
   const removeNotificationReminder = async (id: string) => {
     if (savingReminder) return;

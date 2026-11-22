@@ -380,6 +380,9 @@ export function HomeSessionProvider({ children, startupAssetsReady = true }: { c
       }
       const unreadable = await getLegacyQuarantine();
       if (unreadable) await saveRecoverySnapshot('fresh-guest', { unreadableSnapshot: unreadable });
+      // Archive the raw stored and backup copies too, so a copy that fails validation is not deleted unarchived.
+      const [rawStored, rawBackup] = await Promise.all([readSnapshot(SESSION_STORAGE_KEY), readSnapshot(SESSION_BACKUP_KEY)]);
+      if (rawStored || rawBackup) await saveRecoverySnapshot('fresh-guest', { rawStored, rawBackup });
       writesPaused = true;
       await clearLocalStorage({ preserveRecovery: true });
       writesBlocked.current = false;

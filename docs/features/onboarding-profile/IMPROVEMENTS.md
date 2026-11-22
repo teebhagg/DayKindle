@@ -21,8 +21,8 @@ Priority: **P1** blocks a core path or misleads; **P2** removes friction; **P3**
 
 ### A3. Remove dead onboarding fields — P3, S
 
-- **Evidence:** **Verified** — `accountabilityStyle`, `accountabilityEnabled`, `wakeTime`, `sleepTime`, `focusWindow` have no reader or writer; `focusWindow*` styles are unused.
-- **Approach:** drop `wakeTime`, `sleepTime`, `focusWindow` and the styles. Keep `accountabilityStyle` only if the [accountability plan](../accountability/IMPLEMENTATION_PLAN.md) Stage A intensity setting is approved; then rename it there. Normalization deletes unknown fields as it already does for legacy reminder fields.
+- **Evidence:** **Verified** — `accountabilityStyle`, `accountabilityEnabled`, `focusWindow` have no reader or writer; `focusWindow*` styles are unused. `wakeTime` and `sleepTime` are no longer dead: Profile sets them and check-in reminders read them.
+- **Approach:** drop `focusWindow` and the styles. Keep `wakeTime` and `sleepTime`. Keep `accountabilityStyle` only if the [accountability plan](../accountability/IMPLEMENTATION_PLAN.md) Stage A intensity setting is approved; then rename it there. Normalization deletes unknown fields as it already does for legacy reminder fields.
 
 ## B. Refine existing capabilities
 

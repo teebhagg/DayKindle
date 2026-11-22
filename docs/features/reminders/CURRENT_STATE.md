@@ -26,7 +26,7 @@ Anyone who wants a nudge at a set time. Expected outcome: create a one-time or d
 | Remove a reminder | **Verified** | "Remove" on each row; reschedules the rest. |
 | Edit a reminder | **Not found** | Remove and recreate. |
 | Weekly or selected-day repeats | **Not found** | Only `once` and `daily`. |
-| Reminders tied to a task, habit, routine block, or check-in | **Not found** | Reminders are free-standing. |
+| Reminders tied to a task, habit, or routine block | **Not found** | Reminders are free-standing. The only linked reminders are the check-in reminders below. |
 | Open the reminder screen from a notification tap | **Source configured; Needs Validation** | Tapping an app-owned reminder routes to Profile. Tapping a check-in reminder (`checkInPeriod` set) opens Today with the matching check-in sheet. Action buttons open the app so their response can be applied and saved. |
 | Daily check-in reminders from Profile wake and sleep times | **Source configured; Needs Validation** (updated 2026-11-21) | Profile → Daily check-ins saves `wakeTime` and `sleepTime`. Each creates a daily reminder with a fixed ID (`checkin-morning` at wake time, `checkin-evening` 60 minutes before sleep). Clearing a time removes its reminder. |
 | Apple Live Activity | **Not found** | The app uses scheduled notifications; it does not include an ActivityKit Live Activity or widget extension. |

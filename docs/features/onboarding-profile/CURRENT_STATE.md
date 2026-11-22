@@ -42,7 +42,7 @@ First-time users (Guest or signed in) and returning users on a new device. Expec
 
 - **Routes:** `app/index.tsx` (welcome, onboarding, `/auth` and link modes); redirects to `/(tabs)` once `onboardingCompleted` is true. Profile tab: `app/(tabs)/profile*.tsx` → `HomeScreen`.
 - **Components:** `welcome-auth-screen.tsx`, `guest-workspace-sign-in-tray.tsx`, `sync-consent-dialog.tsx`, `profile-identity.tsx`, `apple-auth-button.tsx`, `animated-splash.tsx`.
-- **State:** `OnboardingProfile` in `home-session.tsx`: `accountType`, sync consent fields, `routineTemplateIds`, `appearance`, `areas`, `customAreaName`. Type-only fields with no reader or writer: `accountabilityStyle`, `accountabilityEnabled`, `wakeTime`, `sleepTime`, `focusWindow` (**Verified**). Unused `focusWindow*` styles remain in `app/index.tsx`.
+- **State:** `OnboardingProfile` in `home-session.tsx`: `accountType`, sync consent fields, `routineTemplateIds`, `appearance`, `areas`, `customAreaName`. Type-only fields with no reader or writer: `accountabilityStyle`, `accountabilityEnabled`, `focusWindow` (**Verified**). `wakeTime` and `sleepTime` are set in Profile and read by check-in reminders. Unused `focusWindow*` styles remain in `app/index.tsx`.
 - **Persistence:** onboarding and `visualStyle` are stored in the SQLite `session_settings` row; life areas in `life_areas`; starter goal in `goals`; routine in `day_schedules`. Synced as `settings`, `lifeAreas`, `plans`, `daySchedules` when sync is on.
 - **Analytics:** `onboarding_completed` with `account_type`, `starter_plan_count`, `has_routine`. Screen names `welcome`, `home`, `goals`, `progress`, `profile`, `history` only (`PostHogScreenTracker` in `app/_layout.tsx`).
 
